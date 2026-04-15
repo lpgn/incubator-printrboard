@@ -17,6 +17,9 @@ public:
     // Read temperature from thermistor (°C), with oversampling
     float readTemperature();
 
+    // Read raw averaged ADC value (0-1023) for diagnostics
+    uint16_t readRawADC();
+
     // Set heater PWM output (0-255)
     void setOutput(uint8_t pwm);
 

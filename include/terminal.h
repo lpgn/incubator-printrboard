@@ -79,6 +79,7 @@ private:
     void cmdReset();
     void cmdSilence();
     void cmdTurn();
+    void cmdTest(const char* args);
 
     // Helper: skip whitespace and return pointer to next token
     const char* nextToken(const char* str);

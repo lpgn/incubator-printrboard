@@ -14,13 +14,16 @@ void Heater::begin() {
     analogWrite(HEATER_PIN, 0); // Start with heater OFF
 }
 
-float Heater::readTemperature() {
-    // Oversample ADC for noise reduction
+uint16_t Heater::readRawADC() {
     uint32_t sum = 0;
     for (uint8_t i = 0; i < THERM_OVERSAMPLE; i++) {
         sum += analogRead(THERMISTOR_PIN);
     }
-    uint16_t adcValue = sum / THERM_OVERSAMPLE;
+    return sum / THERM_OVERSAMPLE;
+}
+
+float Heater::readTemperature() {
+    uint16_t adcValue = readRawADC();
 
     // Check for sensor failure (open circuit or short)
     if (adcValue <= TEMP_SENSOR_FAIL_LO || adcValue >= TEMP_SENSOR_FAIL_HI) {

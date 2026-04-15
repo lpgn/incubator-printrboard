@@ -172,6 +172,8 @@ void Terminal::processCommand(const char* cmd) {
         cmdSilence();
     } else if (strcasecmp(cmd, "turn") == 0) {
         cmdTurn();
+    } else if (strncasecmp(cmd, "test ", 5) == 0) {
+        cmdTest(cmd + 5);
     } else {
         Serial.print(F("Unknown command: "));
         Serial.println(cmd);
@@ -200,6 +202,12 @@ void Terminal::cmdHelp() {
     Serial.println(F("  silence              Silence buzzer alarm"));
     Serial.println(F("  reset                Factory reset (clear EEPROM)"));
     Serial.println(F("  help                 Show this help"));
+    Serial.println(F(""));
+    Serial.println(F("HARDWARE TEST:"));
+    Serial.println(F("  test temp            Read thermistor ADC and temperature"));
+    Serial.println(F("  test heater <pwm>    Force heater PWM 0-255 (bypasses shutdown)"));
+    Serial.println(F("  test fan <pwm>       Force fan PWM 0-255 (-1 = auto)"));
+    Serial.println(F("  test motor           Trigger one egg turn immediately"));
     Serial.println();
 }
 
@@ -501,6 +509,58 @@ void Terminal::cmdTurn() {
         _turner->turnNow();
     } else {
         Serial.println(F("Turning not allowed in current state."));
+    }
+}
+
+void Terminal::cmdTest(const char* args) {
+    while (*args == ' ') args++;
+
+    if (strncasecmp(args, "temp", 4) == 0) {
+        uint16_t raw = _heater->readRawADC();
+        float temp = _heater->readTemperature();
+        Serial.print(F("[TEST] Thermistor ADC = "));
+        Serial.println(raw);
+        if (_heater->isSensorFailed()) {
+            Serial.println(F("[TEST] Sensor FAILED (open or short)"));
+        } else {
+            Serial.print(F("[TEST] Temperature = "));
+            Serial.print(temp, 1);
+            Serial.println(F("C"));
+        }
+    }
+    else if (strncasecmp(args, "heater ", 7) == 0) {
+        int pwm = atoi(args + 7);
+        if (pwm < 0 || pwm > 255) {
+            Serial.println(F("Usage: test heater <0-255>"));
+            return;
+        }
+        _heater->clearShutdown();
+        _heater->setOutput((uint8_t)pwm);
+        Serial.print(F("[TEST] Heater PWM set to "));
+        Serial.println(pwm);
+        if (pwm > 0) {
+            Serial.println(F("WARNING: Heater is ON. Type 'test heater 0' or 'stop' to turn off."));
+        }
+    }
+    else if (strncasecmp(args, "fan ", 4) == 0) {
+        int pwm = atoi(args + 4);
+        if (pwm == -1) {
+            _fan->setManualSpeed(-1);
+            Serial.println(F("[TEST] Fan returned to AUTO mode."));
+        } else if (pwm < 0 || pwm > 255) {
+            Serial.println(F("Usage: test fan <0-255> or test fan -1"));
+        } else {
+            _fan->setManualSpeed((int16_t)pwm);
+            Serial.print(F("[TEST] Fan PWM set to "));
+            Serial.println(pwm);
+        }
+    }
+    else if (strncasecmp(args, "motor", 5) == 0) {
+        _turner->turnNow();
+        Serial.println(F("[TEST] Motor turn triggered."));
+    }
+    else {
+        Serial.println(F("Usage: test temp|heater <pwm>|fan <pwm>|motor"));
     }
 }
 
