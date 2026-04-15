@@ -21,14 +21,17 @@ public:
     bool read();
 
     // Get last successful readings
-    float getHumidity() const { return _humidity; }
+    float getHumidity() const;
     float getTemperature() const { return _temperature; }
 
     // Get consecutive failure count
     uint8_t getFailureCount() const { return _failures; }
 
-    // Is sensor considered failed? (3+ consecutive failures)
-    bool isFailed() const { return _failures >= DHT_MAX_FAILURES; }
+    // Is sensor considered failed? (3+ consecutive failures while present)
+    bool isFailed() const;
+
+    // Is sensor physically present? Goes false after many consecutive failures.
+    bool isPresent() const { return _present; }
 
     // Get midpoint humidity target for current phase
     static float getHumidityMidpoint(uint8_t lo, uint8_t hi);
@@ -37,6 +40,7 @@ private:
     float _humidity;
     float _temperature;
     uint8_t _failures;
+    bool _present;
 
     // Low-level bit-bang protocol
     bool readRawData(uint8_t data[5]);

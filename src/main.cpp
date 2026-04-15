@@ -36,7 +36,7 @@ uint16_t lastDay = 0;
 
 // Current sensor readings (global for sharing between modules)
 float currentTemp = 0.0f;
-float currentHumidity = 0.0f;
+float currentHumidity = 50.0f;
 
 // =============================================================================
 // SETUP
@@ -161,10 +161,12 @@ void loop() {
     // --- Read DHT22 sensor (every 5 seconds) ---
     if (now - lastDHTRead >= DHT_READ_INTERVAL_MS) {
         lastDHTRead = now;
-        if (humiditySensor.read()) {
-            currentHumidity = humiditySensor.getHumidity();
+        if (humiditySensor.isPresent()) {
+            if (humiditySensor.read()) {
+                currentHumidity = humiditySensor.getHumidity();
+            }
+            // If read failed, keep last known value
         }
-        // If read failed, keep last known value
     }
 
     // --- PID Temperature Control (every 1 second) ---

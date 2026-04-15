@@ -7,17 +7,26 @@
 // =============================================================================
 
 HumiditySensor::HumiditySensor()
-    : _humidity(0.0f), _temperature(0.0f), _failures(0) {}
+    : _humidity(50.0f), _temperature(25.0f), _failures(0), _present(true) {}
 
 void HumiditySensor::begin() {
     pinMode(DHT22_PIN, INPUT_PULLUP);
 }
 
 bool HumiditySensor::read() {
+    if (!_present) {
+        return false;
+    }
+
     uint8_t data[5] = {0};
 
     if (!readRawData(data)) {
         _failures++;
+        if (_present && _failures >= 20) {
+            _present = false;
+            _humidity = 50.0f;
+            Serial.println(F("[DHT] Sensor not detected — operating without humidity sensor."));
+        }
         return false;
     }
 
@@ -118,6 +127,14 @@ bool HumiditySensor::readRawData(uint8_t data[5]) {
     }
 
     return true;
+}
+
+float HumiditySensor::getHumidity() const {
+    return _present ? _humidity : 50.0f;
+}
+
+bool HumiditySensor::isFailed() const {
+    return _present && _failures >= DHT_MAX_FAILURES;
 }
 
 float HumiditySensor::getHumidityMidpoint(uint8_t lo, uint8_t hi) {
