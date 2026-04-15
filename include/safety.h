@@ -26,6 +26,14 @@ public:
     bool isHumidityLow() const { return _humidLow; }
     bool isAnyAlarm() const { return _overTemp || _underTemp || _sensorFail || _humidHigh || _humidLow; }
 
+    // Override safety shutdowns — allows testing even with alarms active
+    void setOverride(bool overridden);
+    bool isOverridden() const { return _overridden; }
+
+    // Adjustable max safety temperature (default 40°C, adjustable 35-50°C)
+    void setMaxTemp(float temp);
+    float getMaxTemp() const { return _maxTemp; }
+
     // Silence the buzzer (alarm flags remain, but buzzer stops)
     void silenceAlarm();
 
@@ -45,6 +53,8 @@ private:
     bool _humidHigh;
     bool _humidLow;
     bool _silenced;
+    bool _overridden;
+    float _maxTemp;
 
     // Under-temp timing
     unsigned long _underTempStart;

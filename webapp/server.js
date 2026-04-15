@@ -26,6 +26,20 @@ let lastStatus = {
   connected: false
 };
 
+let lastAlarms = {
+  sensorFail: false,
+  overTemp: false,
+  underTemp: false,
+  dhtFail: false,
+  humidHigh: false,
+  humidLow: false,
+  errorState: false,
+  overridden: false
+};
+
+const MAX_HISTORY = 400;
+let history = []; // { t: ISOString, temp, humidity, heater, fan }
+
 function broadcast(data) {
   const msg = JSON.stringify(data);
   wss.clients.forEach(client => {
@@ -35,11 +49,36 @@ function broadcast(data) {
   });
 }
 
+function parseAlarms(line) {
+  if (line.includes('ALARM: Thermistor sensor FAILED')) lastAlarms.sensorFail = true;
+  if (line.includes('ALARM: OVER-TEMP')) lastAlarms.overTemp = true;
+  if (line.includes('WARNING: Under-temp')) lastAlarms.underTemp = true;
+  if (line.includes('DHT22 sensor read failures')) lastAlarms.dhtFail = true;
+  if (line.includes('WARNING: Humidity HIGH')) lastAlarms.humidHigh = true;
+  if (line.includes('WARNING: Humidity LOW')) lastAlarms.humidLow = true;
+  if (line.includes('ERROR STATE')) lastAlarms.errorState = true;
+  if (line.includes('Safety override ENABLED')) lastAlarms.overridden = true;
+  if (line.includes('Safety override DISABLED')) lastAlarms.overridden = false;
+  if (line.includes('Reset complete')) {
+    lastAlarms = {
+      sensorFail: false, overTemp: false, underTemp: false,
+      dhtFail: false, humidHigh: false, humidLow: false,
+      errorState: false, overridden: lastAlarms.overridden
+    };
+  }
+  // Clear alarms when explicitly cleared or state goes normal
+  if (line.includes('>> STOPPED.') || line.includes('>> RESUMED.')) {
+    lastAlarms.errorState = false;
+  }
+}
+
 function parseStatusLine(line) {
+  let result = null;
+
   // Match: [DAY 01/21] T=21.8C H=0% HTR=0% FAN=29% STATE=ERROR
   const dayMatch = line.match(/\[DAY\s+(\d+)\/(\d+)\]\s+T=([\d.-]+)C\s+H=(\d+)%\s+HTR=(\d+)%\s+FAN=(\d+)%\s+STATE=(\S+)/);
   if (dayMatch) {
-    return {
+    result = {
       type: 'status',
       day: parseInt(dayMatch[1], 10),
       totalDays: parseInt(dayMatch[2], 10),
@@ -54,7 +93,7 @@ function parseStatusLine(line) {
   // Match: [IDLE] T=21.8C H=0%
   const idleMatch = line.match(/\[IDLE\]\s+T=([\d.-]+)C\s+H=(\d+)%/);
   if (idleMatch) {
-    return {
+    result = {
       type: 'status',
       day: 0,
       totalDays: 0,
@@ -66,7 +105,21 @@ function parseStatusLine(line) {
     };
   }
 
-  return null;
+  if (result) {
+    const point = {
+      t: new Date().toISOString(),
+      temp: result.temp,
+      humidity: result.humidity,
+      heater: result.heater,
+      fan: result.fan,
+      state: result.state
+    };
+    history.push(point);
+    if (history.length > MAX_HISTORY) history.shift();
+    broadcast({ type: 'history', history: [point] });
+  }
+
+  return result;
 }
 
 let port = null;
@@ -103,6 +156,12 @@ function openSerial() {
       const raw = line.trim();
       if (!raw) return;
 
+      const prevAlarms = JSON.stringify(lastAlarms);
+      parseAlarms(raw);
+      if (JSON.stringify(lastAlarms) !== prevAlarms) {
+        broadcast({ type: 'alarms', alarms: { ...lastAlarms } });
+      }
+
       const status = parseStatusLine(raw);
       if (status) {
         Object.assign(lastStatus, status);
@@ -132,6 +191,10 @@ wss.on('connection', (ws) => {
   // Send current state immediately
   ws.send(JSON.stringify({ type: 'connection', connected: lastStatus.connected, port: SERIAL_PATH }));
   ws.send(JSON.stringify(Object.assign({ type: 'status' }, lastStatus)));
+  ws.send(JSON.stringify({ type: 'alarms', alarms: { ...lastAlarms } }));
+  if (history.length) {
+    ws.send(JSON.stringify({ type: 'history', history }));
+  }
 
   ws.on('message', (message) => {
     let cmd = '';

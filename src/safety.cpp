@@ -3,7 +3,8 @@
 
 SafetyMonitor::SafetyMonitor()
     : _overTemp(false), _underTemp(false), _sensorFail(false),
-      _humidHigh(false), _humidLow(false), _silenced(false),
+      _humidHigh(false), _humidLow(false), _silenced(false), _overridden(false),
+      _maxTemp(40.0f),
       _underTempStart(0), _underTempTiming(false),
       _lastBuzzToggle(0), _buzzState(false),
       _lastLEDBlink(0), _ledState(false) {}
@@ -32,13 +33,13 @@ bool SafetyMonitor::check(float temperature, float humidity,
     }
 
     // --- Over-temperature ---
-    if (!thermSensorFailed && temperature > TEMP_MAX_CUTOFF) {
+    if (!thermSensorFailed && temperature > _maxTemp) {
         if (!_overTemp) {
             _overTemp = true;
             Serial.print(F("!!! ALARM: OVER-TEMP "));
             Serial.print(temperature, 1);
             Serial.print(F("C > "));
-            Serial.print(TEMP_MAX_CUTOFF, 1);
+            Serial.print(_maxTemp, 1);
             Serial.println(F("C !!!"));
         }
         anyAlarm = true;
@@ -103,7 +104,7 @@ bool SafetyMonitor::check(float temperature, float humidity,
     }
 
     // --- Buzzer control ---
-    if (anyAlarm && !_silenced) {
+    if (anyAlarm && !_silenced && !_overridden) {
         unsigned long now = millis();
         // Beep pattern: 500ms on, 500ms off for critical, 200ms on/1800ms off for warnings
         uint16_t onTime = (_overTemp || _sensorFail) ? 500 : 200;
@@ -126,6 +127,20 @@ bool SafetyMonitor::check(float temperature, float humidity,
 void SafetyMonitor::silenceAlarm() {
     _silenced = true;
     digitalWrite(BUZZER_PIN, LOW);
+}
+
+void SafetyMonitor::setMaxTemp(float temp) {
+    if (temp < 35.0f) temp = 35.0f;
+    if (temp > 50.0f) temp = 50.0f;
+    _maxTemp = temp;
+}
+
+void SafetyMonitor::setOverride(bool overridden) {
+    _overridden = overridden;
+    if (_overridden) {
+        digitalWrite(BUZZER_PIN, LOW);
+        _buzzState = false;
+    }
 }
 
 void SafetyMonitor::clearAlarms() {

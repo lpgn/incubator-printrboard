@@ -199,7 +199,7 @@ void loop() {
                         (uint16_t)(stateMachine.getHumidityMidpoint() * 10.0f)
                     );
                 }
-            } else if (currentTemp > TEMP_MAX_CUTOFF) {
+            } else if (currentTemp > safety.getMaxTemp()) {
                 // Over-temp — emergency shutdown
                 heater.shutdown();
                 fan.fullSpeed();
@@ -284,7 +284,7 @@ void loop() {
         safety.check(currentTemp, currentHumidity,
                      heater.isSensorFailed(), humiditySensor.isFailed());
 
-        if (safety.isOverTemp() || safety.isSensorFailed()) {
+        if (!safety.isOverridden() && (safety.isOverTemp() || safety.isSensorFailed())) {
             heater.shutdown();
             fan.fullSpeed();
             if (state != STATE_ERROR) {

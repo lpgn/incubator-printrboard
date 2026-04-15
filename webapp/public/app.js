@@ -11,6 +11,19 @@ const els = {
   day: document.getElementById('val-day'),
 };
 
+const ledMap = {
+  sensorFail: { el: document.getElementById('led-sensorFail'), style: 'danger' },
+  overTemp:   { el: document.getElementById('led-overTemp'),   style: 'danger' },
+  underTemp:  { el: document.getElementById('led-underTemp'),  style: 'warn' },
+  dhtFail:    { el: document.getElementById('led-dhtFail'),    style: 'info' },
+  humidHigh:  { el: document.getElementById('led-humidHigh'),  style: 'info' },
+  humidLow:   { el: document.getElementById('led-humidLow'),   style: 'info' },
+  errorState: { el: document.getElementById('led-errorState'), style: 'danger' },
+};
+
+let overrideActive = false;
+let tempChart = null;
+
 let ws;
 let reconnectTimer;
 
@@ -29,6 +42,11 @@ function connect() {
       updateConnection(data.connected);
     } else if (data.type === 'status') {
       updateStatus(data);
+    } else if (data.type === 'alarms') {
+      updateAlarms(data.alarms);
+    } else if (data.type === 'history') {
+      if (!tempChart) initChart();
+      appendHistory(data.history);
     } else if (data.type === 'log') {
       appendLog(data.line);
     }
@@ -63,6 +81,153 @@ function updateStatus(s) {
   } else if (s.state === 'IDLE') {
     els.day.textContent = '-';
   }
+}
+
+function updateAlarms(alarms) {
+  for (const [key, cfg] of Object.entries(ledMap)) {
+    if (alarms[key]) {
+      cfg.el.classList.add('on', cfg.style);
+    } else {
+      cfg.el.classList.remove('on', 'danger', 'warn', 'info');
+    }
+  }
+  if (alarms.overridden !== undefined) {
+    overrideActive = alarms.overridden;
+    const btn = document.getElementById('btn-override');
+    if (overrideActive) {
+      btn.textContent = 'Override Active — Click to Disable';
+      btn.classList.add('active');
+    } else {
+      btn.textContent = 'Override Errors';
+      btn.classList.remove('active');
+    }
+  }
+}
+
+function toggleOverride() {
+  const cmd = overrideActive ? 'override off' : 'override on';
+  send(cmd);
+}
+
+function updateMaxTempLabel(val) {
+  document.getElementById('maxtemp-val').textContent = parseFloat(val).toFixed(1) + '°C';
+}
+
+function sendMaxTemp() {
+  const val = document.getElementById('maxtemp-range').value;
+  send('set maxtemp ' + val);
+}
+
+function initChart() {
+  const ctx = document.getElementById('tempChart').getContext('2d');
+
+  const gradTemp = ctx.createLinearGradient(0, 0, 0, 300);
+  gradTemp.addColorStop(0, 'rgba(239,68,68,0.45)');
+  gradTemp.addColorStop(1, 'rgba(239,68,68,0.02)');
+
+  const gradHum = ctx.createLinearGradient(0, 0, 0, 300);
+  gradHum.addColorStop(0, 'rgba(56,189,248,0.35)');
+  gradHum.addColorStop(1, 'rgba(56,189,248,0.02)');
+
+  Chart.defaults.color = '#94a3b8';
+  Chart.defaults.borderColor = '#334155';
+
+  tempChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [
+        {
+          label: 'Temperature (°C)',
+          data: [],
+          borderColor: '#ef4444',
+          backgroundColor: gradTemp,
+          borderWidth: 2,
+          tension: 0.4,
+          fill: true,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          yAxisID: 'y'
+        },
+        {
+          label: 'Humidity (%)',
+          data: [],
+          borderColor: '#38bdf8',
+          backgroundColor: gradHum,
+          borderWidth: 2,
+          tension: 0.4,
+          fill: true,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          yAxisID: 'y1'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          labels: { color: '#e2e8f0', font: { size: 12 } }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(15,23,42,0.95)',
+          titleColor: '#e2e8f0',
+          bodyColor: '#cbd5e1',
+          borderColor: '#334155',
+          borderWidth: 1
+        }
+      },
+      scales: {
+        x: {
+          ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 },
+          grid: { color: '#1e293b' }
+        },
+        y: {
+          type: 'linear',
+          display: true,
+          position: 'left',
+          suggestedMin: 20,
+          suggestedMax: 45,
+          grid: { color: '#1e293b' }
+        },
+        y1: {
+          type: 'linear',
+          display: true,
+          position: 'right',
+          suggestedMin: 0,
+          suggestedMax: 100,
+          grid: { drawOnChartArea: false }
+        }
+      }
+    }
+  });
+}
+
+function appendHistory(points) {
+  if (!tempChart) return;
+  const labels = tempChart.data.labels;
+  const d0 = tempChart.data.datasets[0].data;
+  const d1 = tempChart.data.datasets[1].data;
+
+  for (const p of points) {
+    const t = new Date(p.t);
+    const label = t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    labels.push(label);
+    d0.push(p.temp);
+    d1.push(p.humidity);
+  }
+
+  const max = 400;
+  if (labels.length > max) {
+    const drop = labels.length - max;
+    labels.splice(0, drop);
+    d0.splice(0, drop);
+    d1.splice(0, drop);
+  }
+
+  tempChart.update('none');
 }
 
 function stateColor(state) {

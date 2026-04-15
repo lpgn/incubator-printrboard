@@ -174,6 +174,8 @@ void Terminal::processCommand(const char* cmd) {
         cmdTurn();
     } else if (strncasecmp(cmd, "test ", 5) == 0) {
         cmdTest(cmd + 5);
+    } else if (strncasecmp(cmd, "override", 8) == 0) {
+        cmdOverride(cmd + 8);
     } else {
         Serial.print(F("Unknown command: "));
         Serial.println(cmd);
@@ -193,6 +195,7 @@ void Terminal::cmdHelp() {
     Serial.println(F("  resume               Resume incubation / power recovery"));
     Serial.println(F("  status               Show detailed status"));
     Serial.println(F("  set temp <C>         Override temperature setpoint"));
+    Serial.println(F("  set maxtemp <C>      Set safety max temp (35-50C)"));
     Serial.println(F("  set humidity <lo> <hi>  Override humidity range (%)"));
     Serial.println(F("  set pid <Kp> <Ki> <Kd>  Set PID tuning"));
     Serial.println(F("  set turns <N>        Set turns per day"));
@@ -208,6 +211,10 @@ void Terminal::cmdHelp() {
     Serial.println(F("  test heater <pwm>    Force heater PWM 0-255 (bypasses shutdown)"));
     Serial.println(F("  test fan <pwm>       Force fan PWM 0-255 (-1 = auto)"));
     Serial.println(F("  test motor           Trigger one egg turn immediately"));
+    Serial.println();
+    Serial.println(F("SAFETY OVERRIDE:"));
+    Serial.println(F("  override on          Disable safety shutdowns (for testing)"));
+    Serial.println(F("  override off         Re-enable safety shutdowns"));
     Serial.println();
 }
 
@@ -360,6 +367,8 @@ void Terminal::cmdStatus() {
     }
     Serial.print(F("C (target: "));
     Serial.print(_sm->getTargetTemp(), 1);
+    Serial.print(F("C | max: "));
+    Serial.print(_safety->getMaxTemp(), 1);
     Serial.println(F("C)"));
 
     Serial.print(F("  Humid: "));
@@ -409,13 +418,24 @@ void Terminal::cmdSet(const char* args) {
 
     if (strncasecmp(args, "temp ", 5) == 0) {
         float temp = atof(args + 5);
-        if (temp < 30.0f || temp > 42.0f) {
-            Serial.println(F("Temperature must be 30-42C."));
+        if (temp < 30.0f || temp > 50.0f) {
+            Serial.println(F("Temperature must be 30-50C."));
             return;
         }
         _sm->setTempOverride(temp);
         _pid->setSetpoint(temp);
         Serial.print(F(">> Temperature setpoint: "));
+        Serial.print(temp, 1);
+        Serial.println(F("C"));
+    }
+    else if (strncasecmp(args, "maxtemp ", 8) == 0) {
+        float temp = atof(args + 8);
+        if (temp < 35.0f || temp > 50.0f) {
+            Serial.println(F("Max temp must be 35-50C."));
+            return;
+        }
+        _safety->setMaxTemp(temp);
+        Serial.print(F(">> Safety max temperature: "));
         Serial.print(temp, 1);
         Serial.println(F("C"));
     }
@@ -509,6 +529,22 @@ void Terminal::cmdTurn() {
         _turner->turnNow();
     } else {
         Serial.println(F("Turning not allowed in current state."));
+    }
+}
+
+void Terminal::cmdOverride(const char* arg) {
+    while (*arg == ' ') arg++;
+    if (strcasecmp(arg, "on") == 0) {
+        _safety->setOverride(true);
+        Serial.println(F(">> Safety override ENABLED."));
+        Serial.println(F("   Heater will NOT shut down on sensor/overtemp alarms."));
+        Serial.println(F("   Type 'override off' to restore normal protection."));
+    } else if (strcasecmp(arg, "off") == 0) {
+        _safety->setOverride(false);
+        Serial.println(F(">> Safety override DISABLED. Normal protection restored."));
+    } else {
+        Serial.print(F("Override: "));
+        Serial.println(_safety->isOverridden() ? F("ON") : F("OFF"));
     }
 }
 
