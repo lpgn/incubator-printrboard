@@ -8,6 +8,7 @@ const els = {
   heater: document.getElementById('val-heater'),
   fan: document.getElementById('val-fan'),
   state: document.getElementById('val-state'),
+  stateReason: document.getElementById('val-state-reason'),
   day: document.getElementById('val-day'),
 };
 
@@ -22,6 +23,7 @@ const ledMap = {
 };
 
 let overrideActive = false;
+let lastErrorReason = '';
 let tempChart = null;
 
 let ws;
@@ -75,6 +77,12 @@ function updateStatus(s) {
   if (s.state) {
     els.state.textContent = s.state;
     els.state.style.color = stateColor(s.state);
+    if (s.state === 'ERROR') {
+      els.stateReason.textContent = lastErrorReason || 'Unknown error';
+    } else {
+      els.stateReason.textContent = '';
+      lastErrorReason = '';
+    }
   }
   if (s.day !== null && s.totalDays !== null && s.totalDays !== undefined) {
     els.day.textContent = `${s.day} / ${s.totalDays}`;
@@ -166,6 +174,7 @@ function initChart() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      animation: { duration: 0 },
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: {
@@ -244,6 +253,18 @@ function stateColor(state) {
 }
 
 function appendLog(line) {
+  const errMatch = line.match(/ERROR STATE: (.+?) !!!/);
+  if (errMatch) {
+    lastErrorReason = errMatch[1];
+    if (els.state.textContent === 'ERROR') {
+      els.stateReason.textContent = lastErrorReason;
+    }
+  }
+  if (line.includes('RECOVERED from error')) {
+    lastErrorReason = '';
+    els.stateReason.textContent = '';
+  }
+
   const time = new Date().toLocaleTimeString();
   const div = document.createElement('div');
   div.className = 'line';

@@ -37,7 +37,7 @@ let lastAlarms = {
   overridden: false
 };
 
-const MAX_HISTORY = 400;
+const MAX_HISTORY = 7200;
 let history = []; // { t: ISOString, temp, humidity, heater, fan }
 
 function broadcast(data) {
@@ -57,6 +57,7 @@ function parseAlarms(line) {
   if (line.includes('WARNING: Humidity HIGH')) lastAlarms.humidHigh = true;
   if (line.includes('WARNING: Humidity LOW')) lastAlarms.humidLow = true;
   if (line.includes('ERROR STATE')) lastAlarms.errorState = true;
+  if (line.includes('RECOVERED from error')) lastAlarms.errorState = false;
   if (line.includes('Safety override ENABLED')) lastAlarms.overridden = true;
   if (line.includes('Safety override DISABLED')) lastAlarms.overridden = false;
   if (line.includes('Reset complete')) {

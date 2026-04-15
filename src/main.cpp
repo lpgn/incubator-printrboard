@@ -288,13 +288,21 @@ void loop() {
             heater.shutdown();
             fan.fullSpeed();
             if (state != STATE_ERROR) {
-                stateMachine.goToError();
                 if (safety.isOverTemp()) {
+                    stateMachine.goToError("OVER-TEMP");
                     storage.logEvent(EVENT_OVERTEMP, (uint16_t)(currentTemp * 10));
-                }
-                if (safety.isSensorFailed()) {
+                } else if (safety.isSensorFailed()) {
+                    stateMachine.goToError("SENSOR FAIL");
                     storage.logEvent(EVENT_SENSOR_FAIL, 0);
                 }
+            }
+        }
+
+        // Auto-recover from ERROR when alarms clear
+        if (state == STATE_ERROR && !safety.isAnyAlarm()) {
+            stateMachine.recoverFromError();
+            if (stateMachine.isHeatingAllowed()) {
+                fan.setManualSpeed(-1); // Return to auto
             }
         }
 
@@ -311,7 +319,7 @@ void loop() {
     safety.updateLED();
 
     // --- Auto-report status ---
-    if (terminal.shouldAutoReport() && state != STATE_IDLE) {
+    if (terminal.shouldAutoReport()) {
         terminal.printStatus();
     }
 

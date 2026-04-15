@@ -98,10 +98,23 @@ bool StateMachine::finishAutotune() {
     return true;
 }
 
-bool StateMachine::goToError() {
+bool StateMachine::goToError(const char* reason) {
     _prevState = _state;
     _state = STATE_ERROR;
-    Serial.println(F("[STATE] !!! ERROR STATE !!!"));
+    Serial.print(F("[STATE] !!! ERROR STATE"));
+    if (reason) {
+        Serial.print(F(": "));
+        Serial.print(reason);
+    }
+    Serial.println(F(" !!!"));
+    return true;
+}
+
+bool StateMachine::recoverFromError() {
+    if (_state != STATE_ERROR) return false;
+    _state = _prevState;
+    Serial.print(F(">> RECOVERED from error. Resuming "));
+    Serial.println(getStateName());
     return true;
 }
 

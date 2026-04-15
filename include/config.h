@@ -137,7 +137,7 @@
 
 #define SERIAL_BAUD         115200
 #define TERMINAL_BUF_SIZE   64         // Command input buffer size
-#define STATUS_REPORT_MS    60000UL    // Auto-report status every 60 seconds
+#define STATUS_REPORT_MS    1000UL     // Auto-report status every 1 second
 
 // =============================================================================
 // TIMING

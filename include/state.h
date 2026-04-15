@@ -41,7 +41,8 @@ public:
     bool emergencyStop();
     bool startAutotune();
     bool finishAutotune();
-    bool goToError();
+    bool goToError(const char* reason = nullptr);
+    bool recoverFromError();
     bool reset(); // Back to IDLE
 
     // Configuration
