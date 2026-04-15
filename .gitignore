@@ -1,0 +1,29 @@
+# PlatformIO build output
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# Downloaded tools (binaries)
+tools/
+
+# VSCode / IDE
+.vscode/
+*.code-workspace
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Windows
+*.exe
+*.dll
+*.zip
+*.7z
+
+# Logs
+*.log
