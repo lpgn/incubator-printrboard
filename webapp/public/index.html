@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Egg Incubator Monitor</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🥚 Egg Incubator</h1>
+      <span id="conn-badge" class="badge disconnected">Disconnected</span>
+    </header>
+
+    <section class="cards">
+      <div class="card">
+        <div class="label">Temperature</div>
+        <div class="value" id="val-temp">--</div>
+        <div class="unit">°C</div>
+      </div>
+      <div class="card">
+        <div class="label">Humidity</div>
+        <div class="value" id="val-humidity">--</div>
+        <div class="unit">%</div>
+      </div>
+      <div class="card">
+        <div class="label">Heater</div>
+        <div class="value" id="val-heater">--</div>
+        <div class="unit">%</div>
+      </div>
+      <div class="card">
+        <div class="label">Fan</div>
+        <div class="value" id="val-fan">--</div>
+        <div class="unit">%</div>
+      </div>
+      <div class="card wide">
+        <div class="label">State</div>
+        <div class="value" id="val-state">--</div>
+      </div>
+      <div class="card wide">
+        <div class="label">Day</div>
+        <div class="value" id="val-day">--</div>
+      </div>
+    </section>
+
+    <section class="controls">
+      <h2>Quick Commands</h2>
+      <div class="btn-group">
+        <button onclick="send('help')">Help</button>
+        <button onclick="send('status')">Status</button>
+        <button onclick="send('species')">Species</button>
+      </div>
+      <div class="btn-group">
+        <button onclick="send('select 1')">Select Chicken</button>
+        <button onclick="send('start')">Start</button>
+        <button onclick="send('stop')">Stop</button>
+      </div>
+      <div class="btn-group">
+        <button onclick="send('test temp')">Test Temp</button>
+        <button onclick="send('test heater 64')">Heater Low</button>
+        <button onclick="send('test heater 0')">Heater Off</button>
+        <button onclick="send('test fan 200')">Fan On</button>
+        <button onclick="send('test fan 0')">Fan Off</button>
+        <button onclick="send('test motor')">Test Motor</button>
+        <button onclick="send('turn')">Turn Eggs</button>
+      </div>
+      <div class="btn-group">
+        <button onclick="send('silence')">Silence</button>
+        <button onclick="send('reset')">Reset</button>
+      </div>
+
+      <div class="custom-cmd">
+        <input type="text" id="cmd-input" placeholder="Type command..." />
+        <button onclick="sendInput()">Send</button>
+      </div>
+    </section>
+
+    <section class="terminal">
+      <h2>Serial Log</h2>
+      <pre id="log"></pre>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

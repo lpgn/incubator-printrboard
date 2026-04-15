@@ -73,6 +73,29 @@ pio run --target upload
 pio device monitor
 ```
 
+### Web Dashboard
+A simple webapp is included to monitor and control the incubator from a browser over USB.
+
+```bash
+cd webapp
+npm install
+npm start
+```
+
+Then open **http://localhost:3000** in your browser.
+
+**Requirements:**
+- [Node.js](https://nodejs.org/) installed
+- The Printrboard USB serial port (default `COM8`) available
+
+You can change the serial port if needed:
+```bash
+set SERIAL_PORT=COM3
+npm start
+```
+
+The dashboard shows live temperature, humidity, heater/fan levels, state, and day. It also provides buttons for common commands and a serial log viewer.
+
 ## Usage
 
 ### Quick Start

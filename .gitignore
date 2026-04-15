@@ -25,5 +25,9 @@ desktop.ini
 *.zip
 *.7z
 
+# Node.js
+node_modules/
+package-lock.json
+
 # Logs
 *.log

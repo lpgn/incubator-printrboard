@@ -1,0 +1,14 @@
+{
+  "name": "incubator-webapp",
+  "version": "1.0.0",
+  "description": "USB serial web dashboard for Printrboard Egg Incubator",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "serialport": "^12.0.0",
+    "ws": "^8.18.0"
+  }
+}
