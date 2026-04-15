@@ -7,7 +7,8 @@
 // =============================================================================
 
 Heater::Heater()
-    : _currentPWM(0), _sensorFailed(false), _isShutdown(false) {}
+    : _currentPWM(0), _sensorFailed(false), _isShutdown(false),
+      _manualMode(false), _manualPWM(0) {}
 
 void Heater::begin() {
     pinMode(HEATER_PIN, OUTPUT);
@@ -38,9 +39,16 @@ float Heater::readTemperature() {
 void Heater::setOutput(uint8_t pwm) {
     if (_isShutdown) {
         pwm = 0; // Enforce shutdown
+    } else if (_manualMode) {
+        pwm = _manualPWM;
     }
     _currentPWM = pwm;
     analogWrite(HEATER_PIN, _currentPWM);
+}
+
+void Heater::setManualSpeed(int16_t speed) {
+    _manualMode = (speed >= 0);
+    _manualPWM = (speed >= 0) ? (uint8_t)speed : 0;
 }
 
 void Heater::shutdown() {

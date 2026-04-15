@@ -23,6 +23,12 @@ public:
     // Set heater PWM output (0-255)
     void setOutput(uint8_t pwm);
 
+    // Manual override (0-255), set to -1 to return to auto
+    void setManualSpeed(int16_t speed);
+
+    // Is heater in manual mode?
+    bool isManual() const { return _manualMode; }
+
     // Emergency shutdown — heater OFF
     void shutdown();
 
@@ -42,6 +48,8 @@ private:
     uint8_t _currentPWM;
     bool _sensorFailed;
     bool _isShutdown;
+    bool _manualMode;
+    uint8_t _manualPWM;
 
     // Convert raw ADC to temperature using Steinhart-Hart
     float adcToTemperature(uint16_t adcValue);

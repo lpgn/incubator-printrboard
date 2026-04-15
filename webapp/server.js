@@ -91,8 +91,8 @@ function parseStatusLine(line) {
     };
   }
 
-  // Match: [IDLE] T=21.8C H=0%
-  const idleMatch = line.match(/\[IDLE\]\s+T=([\d.-]+)C\s+H=(\d+)%/);
+  // Match: [IDLE] T=21.8C H=0% HTR=0% FAN=0%
+  const idleMatch = line.match(/\[IDLE\]\s+T=([\d.-]+)C\s+H=(\d+)%\s+HTR=(\d+)%\s+FAN=(\d+)%/);
   if (idleMatch) {
     result = {
       type: 'status',
@@ -100,8 +100,8 @@ function parseStatusLine(line) {
       totalDays: 0,
       temp: parseFloat(idleMatch[1]),
       humidity: parseInt(idleMatch[2], 10),
-      heater: 0,
-      fan: 0,
+      heater: parseInt(idleMatch[3], 10),
+      fan: parseInt(idleMatch[4], 10),
       state: 'IDLE'
     };
   }
