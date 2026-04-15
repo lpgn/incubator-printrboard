@@ -97,7 +97,7 @@ void setup() {
 
         Serial.println(F(""));
         Serial.println(F("  Type 'resume' to continue incubation."));
-        Serial.println(F("  Type 'reset' to start fresh."));
+        Serial.println(F("  Type 'reset' to start fresh (or select a new species)."));
         Serial.println(F("========================================"));
         Serial.println();
 
@@ -133,9 +133,11 @@ void setup() {
         // No saved state — fresh start
         storage.logEvent(EVENT_BOOT, 0);
         Serial.println(F("No saved state found. Ready for new incubation."));
-        Serial.println(F("Type 'species' to see options, then 'select <name>' and 'start'."));
+        Serial.println(F("Type 'species' to see options, then 'select <name|#>' and 'start'."));
         Serial.println();
     }
+
+    terminal.printPrompt();
 
     // Initialize timers
     lastPIDUpdate = millis();

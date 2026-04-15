@@ -23,6 +23,10 @@ void Terminal::printBanner() {
     Serial.println();
 }
 
+void Terminal::printPrompt() {
+    Serial.print(F("> "));
+}
+
 void Terminal::setReferences(StateMachine* sm, PIDController* pid, Heater* heater,
                              HumiditySensor* humid, EggTurner* turner, FanController* fan,
                              SoftClock* clock, Storage* storage, SafetyMonitor* safety) {
@@ -40,15 +44,50 @@ void Terminal::setReferences(StateMachine* sm, PIDController* pid, Heater* heate
 bool Terminal::poll() {
     while (Serial.available()) {
         char c = Serial.read();
+
+        // Discard escape sequences (arrow keys, function keys, etc.)
+        if (c == '\x1B') {
+            while (Serial.available()) {
+                char peek = Serial.peek();
+                if (peek == '[' || peek == '(' || peek == 'O' ||
+                    (peek >= 'A' && peek <= 'Z') || (peek >= 'a' && peek <= 'z') ||
+                    (peek >= '0' && peek <= '9') || peek == ';' || peek == '~') {
+                    Serial.read();
+                } else {
+                    break;
+                }
+            }
+            continue;
+        }
+
+        // Handle backspace / DEL
+        if (c == '\b' || c == '\x7F') {
+            if (_bufPos > 0) {
+                _bufPos--;
+                Serial.print(F("\b \b"));
+            }
+            continue;
+        }
+
+        // Ignore other non-printable characters
+        if (c < 32 || c > 126) {
+            if (c != '\n' && c != '\r') {
+                continue;
+            }
+        }
+
         if (c == '\n' || c == '\r') {
+            Serial.println();
             if (_bufPos > 0) {
                 _buf[_bufPos] = '\0';
                 processCommand(_buf);
                 _bufPos = 0;
-                return true;
             }
+            printPrompt();
+            return true;
         } else if (_bufPos < TERMINAL_BUF_SIZE - 1) {
             _buf[_bufPos++] = c;
+            Serial.print(c);
         }
     }
     return false;
@@ -108,6 +147,9 @@ void Terminal::processCommand(const char* cmd) {
         cmdSpecies();
     } else if (strncasecmp(cmd, "select ", 7) == 0) {
         cmdSelect(cmd + 7);
+    } else if (cmd[0] >= '1' && cmd[0] <= '9' && cmd[1] == '\0') {
+        // Bare number is a quick-select shortcut
+        cmdSelect(cmd);
     } else if (strcasecmp(cmd, "start") == 0) {
         cmdStart();
     } else if (strcasecmp(cmd, "stop") == 0) {
@@ -141,7 +183,7 @@ void Terminal::cmdHelp() {
     Serial.println(F(""));
     Serial.println(F("COMMANDS:"));
     Serial.println(F("  species              List available species presets"));
-    Serial.println(F("  select <name>        Select species (e.g., select chicken)"));
+    Serial.println(F("  select <name|#>      Select species (e.g. select chicken, select 1)"));
     Serial.println(F("  start                Begin incubation cycle"));
     Serial.println(F("  stop                 Emergency stop"));
     Serial.println(F("  autotune             Run PID autotune"));
@@ -168,7 +210,7 @@ void Terminal::cmdSpecies() {
 void Terminal::cmdSelect(const char* arg) {
     while (*arg == ' ') arg++;
     if (*arg == '\0') {
-        Serial.println(F("Usage: select <species name>"));
+        Serial.println(F("Usage: select <species name or number>"));
         return;
     }
 
@@ -177,7 +219,18 @@ void Terminal::cmdSelect(const char* arg) {
         return;
     }
 
-    SpeciesID id = findSpeciesByName(arg);
+    SpeciesID id;
+    if (arg[0] >= '1' && arg[0] <= '9' && arg[1] == '\0') {
+        uint8_t idx = arg[0] - '1';
+        if (idx < SPECIES_COUNT) {
+            id = (SpeciesID)idx;
+        } else {
+            id = SPECIES_COUNT; // invalid
+        }
+    } else {
+        id = findSpeciesByName(arg);
+    }
+
     if (id >= SPECIES_COUNT) {
         Serial.print(F("Unknown species: "));
         Serial.println(arg);

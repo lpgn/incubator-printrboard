@@ -27,6 +27,9 @@ public:
     // Print boot banner
     void printBanner();
 
+    // Print input prompt
+    void printPrompt();
+
     // Poll for incoming commands — call from main loop
     // Returns true if a command was processed
     bool poll();
