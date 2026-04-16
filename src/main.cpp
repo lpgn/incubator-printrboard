@@ -95,6 +95,14 @@ void setup() {
         Serial.println(calBeta, 1);
     }
 
+    // Load preheat max PWM from EEPROM
+    uint8_t savedPreheat = storage.loadPreheatMax();
+    if (savedPreheat > 0) {
+        stateMachine.setPreheatMax(savedPreheat);
+        Serial.print(F("[CAL] Preheat max PWM: "));
+        Serial.println(savedPreheat);
+    }
+
     // --- DS3231 RTC detection ---
     if (rtc.isPresent()) {
         Serial.println(F("DS3231 RTC detected."));
@@ -254,8 +262,8 @@ void loop() {
                 // Normal PID control
                 int16_t output = pid.compute(currentTemp);
                 // Clamp preheat output to avoid massive overshoot
-                if (state == STATE_PREHEATING && output > PID_PREHEAT_MAX) {
-                    output = PID_PREHEAT_MAX;
+                if (state == STATE_PREHEATING && output > stateMachine.getPreheatMax()) {
+                    output = stateMachine.getPreheatMax();
                 }
                 heater.setOutput((uint8_t)output);
             }

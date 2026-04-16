@@ -212,3 +212,13 @@ void Storage::loadCalibration(float& tempOffset, float& nominalR, float& beta) {
     nominalR = readFloat(EEPROM_ADDR_THERM_R25);
     beta = readFloat(EEPROM_ADDR_THERM_BETA);
 }
+
+void Storage::savePreheatMax(uint8_t pwm) {
+    EEPROM.update(EEPROM_ADDR_PREHEAT_MAX, pwm);
+}
+
+uint8_t Storage::loadPreheatMax() {
+    uint8_t val = EEPROM.read(EEPROM_ADDR_PREHEAT_MAX);
+    if (val == 0xFF) return 0; // Uninitialized = use compile-time default
+    return val;
+}

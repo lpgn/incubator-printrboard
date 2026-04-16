@@ -6,7 +6,8 @@ StateMachine::StateMachine()
       _speciesID(SPECIES_CHICKEN), _tempOverride(false),
       _overrideTemp(37.5f), _humidOverride(false),
       _overrideHumLo(45), _overrideHumHi(55),
-      _preheatStableMs(0), _lastPreheatCheck(0) {
+      _preheatStableMs(0), _lastPreheatCheck(0),
+      _preheatMax(PID_PREHEAT_MAX) {
     _preset = getSpeciesPreset(SPECIES_CHICKEN);
 }
 

@@ -55,6 +55,10 @@ public:
     void saveCalibration(float tempOffset, float nominalR, float beta);
     void loadCalibration(float& tempOffset, float& nominalR, float& beta);
 
+    // Save/load preheat max PWM
+    void savePreheatMax(uint8_t pwm);
+    uint8_t loadPreheatMax();
+
 private:
     uint8_t calcChecksum(const SavedState& s);
     void writeFloat(uint16_t addr, float value);

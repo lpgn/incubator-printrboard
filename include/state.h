@@ -80,6 +80,10 @@ public:
     void updatePreheatStability(float currentTemp, float targetTemp);
     bool isPreheatStable() const { return _preheatStableMs >= PREHEAT_STABLE_MS; }
 
+    // Preheat max PWM (user-configurable)
+    uint8_t getPreheatMax() const { return _preheatMax; }
+    void setPreheatMax(uint8_t pwm) { _preheatMax = pwm; }
+
 private:
     IncubatorState _state;
     IncubatorState _prevState;  // State before pause/error
@@ -96,6 +100,7 @@ private:
     // Preheat tracking
     uint32_t _preheatStableMs;
     unsigned long _lastPreheatCheck;
+    uint8_t _preheatMax;
 };
 
 #endif // STATE_H

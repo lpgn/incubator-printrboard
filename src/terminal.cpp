@@ -217,6 +217,7 @@ void Terminal::cmdHelp() {
     Serial.println(F("  set pid <Kp> <Ki> <Kd>  Set PID tuning"));
     Serial.println(F("  set turns <N>        Set turns per day"));
     Serial.println(F("  set fan <min> <max>  Set fan speed range (0-255)"));
+    Serial.println(F("  set preheat <pwm>    Max heater PWM during preheat (0-255)"));
     Serial.println(F("  turn                 Force an immediate egg turn"));
     Serial.println(F("  log                  Show event log"));
     Serial.println(F("  silence              Silence buzzer alarm"));
@@ -563,6 +564,17 @@ void Terminal::cmdSet(const char* args) {
         Serial.print('-');
         Serial.println(maxS);
     }
+    else if (strncasecmp(args, "preheat ", 8) == 0) {
+        int pwm = atoi(args + 8);
+        if (pwm < 0 || pwm > 255) {
+            Serial.println(F("Usage: set preheat <0-255>"));
+            return;
+        }
+        _sm->setPreheatMax((uint8_t)pwm);
+        _storage->savePreheatMax((uint8_t)pwm);
+        Serial.print(F(">> Preheat max PWM set to "));
+        Serial.println(pwm);
+    }
     else if (strncasecmp(args, "thermistor ", 11) == 0) {
         const char* p = args + 11;
         float nominalR = atof(p);
@@ -581,7 +593,7 @@ void Terminal::cmdSet(const char* args) {
         Serial.println(beta, 1);
     }
     else {
-        Serial.println(F("Usage: set temp|humidity|pid|turns|turn deg|turn rpm|fan|thermistor <values>"));
+        Serial.println(F("Usage: set temp|humidity|pid|turns|turn deg|turn rpm|fan|preheat|thermistor <values>"));
     }
 }
 
