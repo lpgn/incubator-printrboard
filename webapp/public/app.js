@@ -142,6 +142,38 @@ function sendTurnRPM() {
   send('set turn rpm ' + rpm);
 }
 
+function sendPreheatMax() {
+  const pwm = document.getElementById('preheat-range').value;
+  send('set preheat ' + pwm);
+}
+
+function sendCalTemp() {
+  const val = document.getElementById('trusted-temp').value;
+  if (val === '') {
+    appendLog('[ERR] Enter a temperature value');
+    return;
+  }
+  send('cal temp actual ' + val);
+}
+
+function sendPID() {
+  const kp = document.getElementById('pid-kp').value;
+  const ki = document.getElementById('pid-ki').value;
+  const kd = document.getElementById('pid-kd').value;
+  send('set pid ' + kp + ' ' + ki + ' ' + kd);
+}
+
+function sendTargetTemp() {
+  const val = document.getElementById('target-temp').value;
+  send('set temp ' + val);
+}
+
+function sendHumidityRange() {
+  const lo = document.getElementById('humid-lo').value;
+  const hi = document.getElementById('humid-hi').value;
+  send('set humidity ' + lo + ' ' + hi);
+}
+
 function initChart() {
   const ctx = document.getElementById('tempChart').getContext('2d');
 

@@ -187,6 +187,43 @@ button.toggle.active { background: #22c55e; border-color: #22c55e; }
   box-shadow: 0 0 8px var(--accent);
 }
 
+.settings {
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.setting-row label {
+  font-size: 0.9rem;
+  color: var(--muted);
+  min-width: 140px;
+}
+.setting-row input[type="number"] {
+  width: 80px;
+  background: #0f172a;
+  color: var(--text);
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+.setting-row input[type="range"] {
+  flex: 1;
+  min-width: 140px;
+}
+.setting-row span {
+  font-size: 0.95rem;
+  min-width: 24px;
+}
+.pid-row label { min-width: auto; margin-left: 4px; }
+.pid-row input[type="number"] { width: 90px; }
+
 .chart-section {
   background: var(--panel);
   border-radius: 12px;
