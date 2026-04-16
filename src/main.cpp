@@ -351,7 +351,7 @@ void loop() {
     safety.updateLED();
 
     // --- Auto-report status ---
-    if (terminal.shouldAutoReport() && state != STATE_IDLE) {
+    if (terminal.shouldAutoReport()) {
         terminal.printStatus();
 
         // Also log to SD card if available
