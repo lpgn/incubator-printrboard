@@ -9,7 +9,7 @@ EggTurner::EggTurner()
     : _enabled(false), _stepping(false), _direction(false),
       _degreesPerTurn(TURNER_DEFAULT_DEGREES), _turnsPerDay(5),
       _turnsCompleted(0), _stepsRemaining(0), _stepsTotal(0),
-      _stepDelayUs(500), _lastStepTime(0), _accelStep(0) {}
+      _stepDelayUs(500), _lastStepTime(0), _accelStep(0), _testTurn(false) {}
 
 void EggTurner::begin() {
     pinMode(TURNER_STEP_PIN, OUTPUT);
@@ -40,9 +40,7 @@ void EggTurner::setTurnsPerDay(uint8_t turns) {
 }
 
 void EggTurner::update(uint32_t elapsedDaySeconds) {
-    if (!_enabled) return;
-
-    // If currently executing a turn, continue stepping
+    // If currently executing a turn, continue stepping even if not enabled
     if (_stepping) {
         unsigned long now = micros();
         if (now - _lastStepTime >= _stepDelayUs) {
@@ -54,8 +52,12 @@ void EggTurner::update(uint32_t elapsedDaySeconds) {
             if (_stepsRemaining == 0) {
                 // Turn complete
                 _stepping = false;
-                _turnsCompleted++;
-                _direction = !_direction; // Alternate direction for next turn
+
+                if (!_testTurn) {
+                    _turnsCompleted++;
+                    _direction = !_direction; // Alternate direction for next turn
+                }
+                _testTurn = false;
 
                 // Disable stepper to save power and reduce heat
                 digitalWrite(TURNER_ENABLE_PIN, HIGH);
@@ -70,6 +72,8 @@ void EggTurner::update(uint32_t elapsedDaySeconds) {
         return;
     }
 
+    if (!_enabled) return;
+
     // Check if it's time for the next scheduled turn
     if (_turnsCompleted >= _turnsPerDay) return; // All turns done for today
 
@@ -81,12 +85,13 @@ void EggTurner::update(uint32_t elapsedDaySeconds) {
     }
 }
 
-void EggTurner::turnNow() {
+void EggTurner::turnNow(bool countAsTurn) {
     if (_stepping) return; // Already turning
 
     _stepsTotal = degreesToSteps(_degreesPerTurn);
     _stepsRemaining = _stepsTotal;
     _accelStep = 0;
+    _testTurn = !countAsTurn;
 
     // Set direction
     digitalWrite(TURNER_DIR_PIN, _direction ? HIGH : LOW);

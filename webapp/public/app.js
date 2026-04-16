@@ -126,6 +126,17 @@ function sendMaxTemp() {
   send('set maxtemp ' + val);
 }
 
+function updateTurnStepsLabel() {
+  const deg = Number(document.getElementById('turn-deg').value) || 0;
+  const steps = Math.round(deg * 3200 / 360);
+  document.getElementById('turn-steps').textContent = '(~' + steps + ' steps)';
+}
+
+function sendTurnDeg() {
+  const deg = document.getElementById('turn-deg').value;
+  send('set turn deg ' + deg);
+}
+
 function initChart() {
   const ctx = document.getElementById('tempChart').getContext('2d');
 

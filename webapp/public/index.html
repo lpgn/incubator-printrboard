@@ -98,6 +98,12 @@
         <span id="maxtemp-val">40°C</span>
         <button onclick="sendMaxTemp()">Set</button>
       </div>
+      <div class="custom-cmd">
+        <label>Turn degrees</label>
+        <input type="number" id="turn-deg" min="15" max="360" step="15" value="90" oninput="updateTurnStepsLabel()" />
+        <span id="turn-steps">(~800 steps)</span>
+        <button onclick="sendTurnDeg()">Set</button>
+      </div>
       <div class="btn-group">
         <button onclick="send('silence')">Silence</button>
         <button onclick="send('reset')">Reset</button>

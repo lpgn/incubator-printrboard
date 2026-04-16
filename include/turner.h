@@ -24,7 +24,7 @@ public:
     void update(uint32_t elapsedDaySeconds);
 
     // Force an immediate turn (for testing)
-    void turnNow();
+    void turnNow(bool countAsTurn = true);
 
     // Enable/disable turning (disabled during lockdown)
     void setEnabled(bool enabled);
@@ -37,6 +37,7 @@ public:
     // Get status
     uint8_t getTurnsCompleted() const { return _turnsCompleted; }
     uint8_t getTurnsPerDay() const { return _turnsPerDay; }
+    uint16_t getDegreesPerTurn() const { return _degreesPerTurn; }
 
     // Reset turn counter (called at start of new day)
     void resetDayCount();
@@ -56,6 +57,7 @@ private:
     uint16_t _stepDelayUs;  // Microseconds between steps (controls speed)
     unsigned long _lastStepTime;
     uint32_t _accelStep;    // Current step in acceleration phase
+    bool _testTurn;         // True if this is a test turn (don't count)
 
     // Calculate steps needed for the configured degrees
     uint32_t degreesToSteps(uint16_t degrees);

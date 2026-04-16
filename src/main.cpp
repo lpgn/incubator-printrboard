@@ -259,7 +259,7 @@ void loop() {
     }
 
     // --- Egg Turner update ---
-    if (stateMachine.isTurningAllowed()) {
+    if (stateMachine.isTurningAllowed() || turner.isStepping()) {
         turner.update(incubationClock.getDaySeconds());
     }
 

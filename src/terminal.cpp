@@ -226,7 +226,7 @@ void Terminal::cmdHelp() {
     Serial.println(F("  test temp            Read thermistor ADC and temperature"));
     Serial.println(F("  test heater <pwm>    Force heater PWM 0-255, -1 = auto"));
     Serial.println(F("  test fan <pwm>       Force fan PWM 0-255 (-1 = auto)"));
-    Serial.println(F("  test motor           Trigger one egg turn immediately"));
+    Serial.println(F("  test motor           Trigger one egg turn immediately (no-count)"));
     Serial.println();
     Serial.println(F("SAFETY OVERRIDE:"));
     Serial.println(F("  override on          Disable safety shutdowns (for testing)"));
@@ -517,6 +517,20 @@ void Terminal::cmdSet(const char* args) {
         Serial.print(F(">> Turns per day: "));
         Serial.println(turns);
     }
+    else if (strncasecmp(args, "turn deg ", 9) == 0) {
+        uint16_t deg = (uint16_t)atoi(args + 9);
+        if (deg < 15 || deg > 360) {
+            Serial.println(F("Degrees per turn must be 15-360."));
+            return;
+        }
+        _turner->setDegreesPerTurn(deg);
+        uint32_t steps = (uint32_t)deg * TURNER_STEPS_PER_REV / 360UL;
+        Serial.print(F(">> Degrees per turn: "));
+        Serial.print(deg);
+        Serial.print(F(" (~"));
+        Serial.print(steps);
+        Serial.println(F(" steps)"));
+    }
     else if (strncasecmp(args, "fan ", 4) == 0) {
         const char* p = args + 4;
         uint8_t minS = (uint8_t)atoi(p);
@@ -530,7 +544,7 @@ void Terminal::cmdSet(const char* args) {
         Serial.println(maxS);
     }
     else {
-        Serial.println(F("Usage: set temp|humidity|pid|turns|fan <values>"));
+        Serial.println(F("Usage: set temp|humidity|pid|turns|turn deg|fan <values>"));
     }
 }
 
@@ -633,7 +647,7 @@ void Terminal::cmdTest(const char* args) {
         if (_turner->isStepping()) {
             Serial.println(F("[TEST] Motor is already turning. Wait for it to finish."));
         } else {
-            _turner->turnNow();
+            _turner->turnNow(false);
             Serial.println(F("[TEST] Motor turn triggered."));
         }
     }
