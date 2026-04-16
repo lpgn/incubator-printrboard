@@ -281,6 +281,18 @@ function appendHistory(points) {
   const d1 = tempChart.data.datasets[1].data;
   const d2 = tempChart.data.datasets[2].data;
 
+  // Detect targetTemp from the incoming batch to backfill if needed
+  let batchTarget = null;
+  for (const p of points) {
+    if (p.targetTemp != null) { batchTarget = p.targetTemp; break; }
+  }
+  // Backfill existing null target points so the line appears across the whole graph
+  if (batchTarget != null) {
+    for (let i = 0; i < d2.length; i++) {
+      if (d2[i] == null) d2[i] = batchTarget;
+    }
+  }
+
   for (const p of points) {
     const t = new Date(p.t);
     const label = t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
