@@ -56,7 +56,7 @@
 // Thermistor selection
 #define THERMISTOR_EPCOS_100K   0   // Generic 100K NTC (EPCOS B57560G104F)
 #define THERMISTOR_CARBONMINI   1   // Custom extruder thermistor (R25~155K, beta~4092)
-#define THERMISTOR_TYPE         THERMISTOR_CARBONMINI  // Change this to switch profiles
+#define THERMISTOR_TYPE         THERMISTOR_EPCOS_100K  // Change this to switch profiles
 
 #if THERMISTOR_TYPE == THERMISTOR_EPCOS_100K
     #define THERM_NOMINAL_R     100000.0f  // Resistance at nominal temperature
