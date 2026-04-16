@@ -218,6 +218,12 @@ function openSerial() {
         broadcast(status);
       }
 
+      if (raw.includes('[CAL] Point added:') || raw.includes('[CAL] Calibration points cleared.') || raw.includes('>> Calibration reset.')) {
+        setTimeout(() => {
+          if (port && port.isOpen) port.write('cal table\r\n');
+        }, 500);
+      }
+
       broadcast({ type: 'log', line: raw });
     });
   });

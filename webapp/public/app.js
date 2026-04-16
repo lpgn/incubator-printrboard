@@ -490,6 +490,9 @@ function updateCalTable(points) {
       <td><input type="number" class="cal-input" step="0.1" value="${p.temp.toFixed(1)}" onchange="updateCalPointLocal(${i}, 'temp', this.value)"></td>`;
     tbody.appendChild(tr);
   }
+  
+  // Make sure the generated code output is always in sync with the table when it updates
+  generateLocalCode();
 }
 
 function updateCalPointLocal(idx, field, val) {
@@ -503,7 +506,6 @@ function addEmptyLocalPoint() {
   if (!window.currentCalPoints) window.currentCalPoints = [];
   window.currentCalPoints.push({adc: 0, temp: 0.0});
   updateCalTable(window.currentCalPoints);
-  generateLocalCode();
 }
 
 function generateLocalCode() {
@@ -540,7 +542,14 @@ function addCalPoint() {
     return;
   }
   send('cal point ' + val);
-  document.getElementById('cal-actual').value = '';
+  
+  // Explicitly command table refresh from frontend because backend node may not have restarted yet
+  setTimeout(() => send('cal table'), 1000);
+}
+
+function clearCalPoints() {
+  send('cal clear points');
+  setTimeout(() => send('cal table'), 1000);
 }
 
 connect();
