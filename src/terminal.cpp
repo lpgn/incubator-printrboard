@@ -306,6 +306,7 @@ void Terminal::cmdStart() {
     _sm->startPreheating(species);
     _clock->start();
     _turner->setTurnsPerDay(p.turnsPerDay);
+    _pid->reset();
     _pid->setSetpoint(_sm->getTargetTemp());
     _fan->setManualSpeed(-1); // Ensure fan is in auto mode
 

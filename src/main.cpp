@@ -151,6 +151,8 @@ void setup() {
             // Temperature is critical during recovery
             heater.clearShutdown();
             heater.setManualSpeed(-1);
+            pid.reset();
+            pid.setSetpoint(stateMachine.getTargetTemp());
             fan.setManualSpeed(-1); // Auto mode
         }
 
@@ -231,6 +233,10 @@ void loop() {
             } else {
                 // Normal PID control
                 int16_t output = pid.compute(currentTemp);
+                // Clamp preheat output to avoid massive overshoot
+                if (state == STATE_PREHEATING && output > PID_PREHEAT_MAX) {
+                    output = PID_PREHEAT_MAX;
+                }
                 heater.setOutput((uint8_t)output);
             }
 

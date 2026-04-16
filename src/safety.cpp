@@ -5,6 +5,7 @@ SafetyMonitor::SafetyMonitor()
     : _overTemp(false), _underTemp(false), _sensorFail(false),
       _humidHigh(false), _humidLow(false), _silenced(false), _overridden(false),
       _maxTemp(40.0f),
+      _overTempStart(0), _overTempTiming(false),
       _underTempStart(0), _underTempTiming(false),
       _lastBuzzToggle(0), _buzzState(false),
       _lastLEDBlink(0), _ledState(false) {}
@@ -32,18 +33,24 @@ bool SafetyMonitor::check(float temperature, float humidity,
         _sensorFail = false;
     }
 
-    // --- Over-temperature ---
+    // --- Over-temperature (sustained, 2 seconds to avoid preheat spikes) ---
     if (!thermSensorFailed && temperature > _maxTemp) {
-        if (!_overTemp) {
-            _overTemp = true;
-            Serial.print(F("!!! ALARM: OVER-TEMP "));
-            Serial.print(temperature, 1);
-            Serial.print(F("C > "));
-            Serial.print(_maxTemp, 1);
-            Serial.println(F("C !!!"));
+        if (!_overTempTiming) {
+            _overTempTiming = true;
+            _overTempStart = millis();
+        } else if (millis() - _overTempStart > 2000UL) {
+            if (!_overTemp) {
+                _overTemp = true;
+                Serial.print(F("!!! ALARM: OVER-TEMP "));
+                Serial.print(temperature, 1);
+                Serial.print(F("C > "));
+                Serial.print(_maxTemp, 1);
+                Serial.println(F("C !!!"));
+            }
+            anyAlarm = true;
         }
-        anyAlarm = true;
     } else {
+        _overTempTiming = false;
         _overTemp = false;
     }
 
@@ -150,6 +157,7 @@ void SafetyMonitor::clearAlarms() {
     _humidHigh = false;
     _humidLow = false;
     _silenced = false;
+    _overTempTiming = false;
     _underTempTiming = false;
     digitalWrite(BUZZER_PIN, LOW);
 }

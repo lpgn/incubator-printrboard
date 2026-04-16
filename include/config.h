@@ -69,12 +69,15 @@
 // =============================================================================
 
 #define PID_SAMPLE_MS       1000       // PID update interval (ms)
-#define PID_DEFAULT_KP      4.0f
-#define PID_DEFAULT_KI      0.2f
-#define PID_DEFAULT_KD      1.0f
+// Conservative defaults for a fast, high-inertia heater.
+// Previous defaults (4/0.2/1) caused massive overshoot on preheat.
+#define PID_DEFAULT_KP      2.0f
+#define PID_DEFAULT_KI      0.05f
+#define PID_DEFAULT_KD      5.0f
 #define PID_OUTPUT_MIN      0
 #define PID_OUTPUT_MAX      255
-#define PID_WINDUP_LIMIT    200.0f     // Anti-windup integral limit
+#define PID_PREHEAT_MAX     60         // Max PWM during preheat (~23%)
+#define PID_WINDUP_LIMIT    100.0f     // Anti-windup integral limit
 
 // Autotune
 #define AUTOTUNE_CYCLES     8          // Number of oscillation cycles to measure

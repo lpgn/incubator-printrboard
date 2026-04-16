@@ -56,7 +56,9 @@ private:
     bool _overridden;
     float _maxTemp;
 
-    // Under-temp timing
+    // Sustained alarm timing
+    unsigned long _overTempStart;
+    bool _overTempTiming;
     unsigned long _underTempStart;
     bool _underTempTiming;
 
