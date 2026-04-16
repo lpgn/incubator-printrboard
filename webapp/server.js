@@ -77,32 +77,34 @@ function parseAlarms(line) {
 function parseStatusLine(line) {
   let result = null;
 
-  // Match: [DAY 01/21] T=21.8C H=0% HTR=0% FAN=29% STATE=ERROR
-  const dayMatch = line.match(/\[DAY\s+(\d+)\/(\d+)\]\s+T=([\d.-]+)C\s+H=(\d+)%\s+HTR=(\d+)%\s+FAN=(\d+)%\s+STATE=(\S+)/);
+  // Match: [DAY 01/21] T=21.8C TARGET=37.5C H=0% HTR=0% FAN=29% STATE=ERROR
+  const dayMatch = line.match(/\[DAY\s+(\d+)\/(\d+)\]\s+T=([\d.-]+)C\s+TARGET=([\d.]+)C\s+H=(\d+)%\s+HTR=(\d+)%\s+FAN=(\d+)%\s+STATE=(\S+)/);
   if (dayMatch) {
+    lastStatus.targetTemp = parseFloat(dayMatch[4]);
     result = {
       type: 'status',
       day: parseInt(dayMatch[1], 10),
       totalDays: parseInt(dayMatch[2], 10),
       temp: parseFloat(dayMatch[3]),
-      humidity: parseInt(dayMatch[4], 10),
-      heater: parseInt(dayMatch[5], 10),
-      fan: parseInt(dayMatch[6], 10),
-      state: dayMatch[7]
+      humidity: parseInt(dayMatch[5], 10),
+      heater: parseInt(dayMatch[6], 10),
+      fan: parseInt(dayMatch[7], 10),
+      state: dayMatch[8]
     };
   }
 
-  // Match: [IDLE] T=21.8C H=0% HTR=0% FAN=0%
-  const idleMatch = line.match(/\[IDLE\]\s+T=([\d.-]+)C\s+H=(\d+)%\s+HTR=(\d+)%\s+FAN=(\d+)%/);
+  // Match: [IDLE] T=21.8C TARGET=37.5C H=0% HTR=0% FAN=0%
+  const idleMatch = line.match(/\[IDLE\]\s+T=([\d.-]+)C\s+TARGET=([\d.]+)C\s+H=(\d+)%\s+HTR=(\d+)%\s+FAN=(\d+)%/);
   if (idleMatch) {
+    lastStatus.targetTemp = parseFloat(idleMatch[2]);
     result = {
       type: 'status',
       day: 0,
       totalDays: 0,
       temp: parseFloat(idleMatch[1]),
-      humidity: parseInt(idleMatch[2], 10),
-      heater: parseInt(idleMatch[3], 10),
-      fan: parseInt(idleMatch[4], 10),
+      humidity: parseInt(idleMatch[3], 10),
+      heater: parseInt(idleMatch[4], 10),
+      fan: parseInt(idleMatch[5], 10),
       state: 'IDLE'
     };
   }

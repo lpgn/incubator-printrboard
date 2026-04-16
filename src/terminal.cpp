@@ -115,9 +115,13 @@ void Terminal::printStatus() {
 
     IncubatorState state = _sm->getState();
 
+    float targetTemp = _sm->getTargetTemp();
+
     if (state == STATE_IDLE) {
         Serial.print(F("[IDLE] T="));
         Serial.print(temp, 1);
+        Serial.print(F("C TARGET="));
+        Serial.print(targetTemp, 1);
         Serial.print(F("C H="));
         Serial.print(humidity, 0);
         Serial.print(F("% HTR="));
@@ -136,6 +140,8 @@ void Terminal::printStatus() {
     Serial.print(_sm->getActivePreset().totalDays);
     Serial.print(F("] T="));
     Serial.print(temp, 1);
+    Serial.print(F("C TARGET="));
+    Serial.print(targetTemp, 1);
     Serial.print(F("C H="));
     Serial.print(humidity, 0);
     Serial.print(F("% HTR="));
