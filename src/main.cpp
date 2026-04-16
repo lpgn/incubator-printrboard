@@ -276,11 +276,14 @@ void loop() {
         }
 
         // --- Fan control (based on temp and humidity) ---
-        if (state != STATE_IDLE && state != STATE_DONE) {
+        // Do NOT run exhaust fan during preheat — it vents heat out
+        if (state != STATE_IDLE && state != STATE_DONE && state != STATE_PREHEATING) {
             float tempError = stateMachine.getTargetTemp() - currentTemp;
             float humidMid = stateMachine.getHumidityMidpoint();
             float humidError = humidMid - currentHumidity;
             fan.update(tempError, humidError);
+        } else if (state == STATE_PREHEATING) {
+            fan.setManualSpeed(0); // Keep exhaust fan off while heating up
         }
     }
 
