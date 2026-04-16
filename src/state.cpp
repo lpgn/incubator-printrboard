@@ -1,4 +1,5 @@
 #include "state.h"
+#include "config.h"
 
 StateMachine::StateMachine()
     : _state(STATE_IDLE), _prevState(STATE_IDLE),
@@ -187,7 +188,7 @@ bool StateMachine::checkDayTransitions(uint16_t currentDay) {
 }
 
 bool StateMachine::isTurningAllowed() const {
-    return _state == STATE_INCUBATING;
+    return _state == STATE_PREHEATING || _state == STATE_INCUBATING;
 }
 
 bool StateMachine::isHeatingAllowed() const {
@@ -204,7 +205,7 @@ void StateMachine::updatePreheatStability(float currentTemp, float targetTemp) {
     _lastPreheatCheck = now;
 
     float error = currentTemp - targetTemp;
-    if (error < -0.5f || error > 0.5f) {
+    if (error < -PREHEAT_STABLE_BAND || error > PREHEAT_STABLE_BAND) {
         // Not stable — reset counter
         _preheatStableMs = 0;
     } else {

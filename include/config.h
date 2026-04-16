@@ -111,6 +111,15 @@
 #define FAN_MAX_SPEED       255        // Maximum fan speed
 
 // =============================================================================
+// PREHEATING CONFIGURATION
+// =============================================================================
+
+// For fast, high-inertia heaters, 30 min is excessive and causes
+// the timer to reset forever on tiny oscillations.
+#define PREHEAT_STABLE_MS      300000UL // 5 minutes
+#define PREHEAT_STABLE_BAND    1.0f      // ±1.0°C tolerance
+
+// =============================================================================
 // TURNER (STEPPER) CONFIGURATION
 // =============================================================================
 

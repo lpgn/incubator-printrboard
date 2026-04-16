@@ -2,6 +2,7 @@
 #define STATE_H
 
 #include <Arduino.h>
+#include "config.h"
 #include "species.h"
 
 // =============================================================================
@@ -77,7 +78,7 @@ public:
 
     // Preheat check: has temp been stable long enough?
     void updatePreheatStability(float currentTemp, float targetTemp);
-    bool isPreheatStable() const { return _preheatStableMs >= 1800000UL; } // 30 min
+    bool isPreheatStable() const { return _preheatStableMs >= PREHEAT_STABLE_MS; }
 
 private:
     IncubatorState _state;
