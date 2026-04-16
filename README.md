@@ -20,7 +20,7 @@ Custom firmware for the **Printrboard Rev D** (AT90USB1286) repurposed as an aut
 | **Controller** | Printrboard Rev D (AT90USB1286) |
 | **Heater** | 12V heating element (silicone pad, ceramic, etc.) |
 | **Temperature sensor** | NTC 100K thermistor (from 3D printer, connects to heatbed thermistor input) |
-| **Humidity sensor** | DHT22 / AM2302 (connects to EXP2 header, PE0 pin) |
+| **Humidity sensor** | DHT22 / AM2302 (connects to EXP2 header, PD2 pin) |
 | **Egg turner motor** | NEMA 17 stepper motor (connects to X-axis stepper driver) |
 | **Fan** | 12V DC fan (connects to FAN header) |
 | **Power supply** | 12V DC, sufficient for heater + motor + fan |
@@ -35,12 +35,14 @@ Custom firmware for the **Printrboard Rev D** (AT90USB1286) repurposed as an aut
 | Heatbed Thermistor | NTC 100K thermistor (near eggs) |
 | X Stepper | Egg turning motor (NEMA 17) |
 | FAN header | 12V circulation fan |
-| EXP2 pin PE0 | DHT22 data pin (+ 4.7kΩ pull-up to 5V) |
+| EXP2 pin PD2 | DHT22 data pin (+ 4.7kΩ pull-up to 5V) |
 | EXP1 pin PB5 | Status LED (optional) |
 | EXP2 pin PD4 | Piezo buzzer (optional) |
 | USB | PC or Raspberry Pi |
 
-> **Important:** DHT22 has 3 pins: VCC (5V), GND, and DATA. Connect DATA to PE0 with a 4.7kΩ pull-up resistor between DATA and VCC.
+> **Important:** DHT22 has 3 pins: VCC (5V), GND, and DATA. Connect DATA to PD2 with a 4.7kΩ pull-up resistor between DATA and VCC.
+>
+> **Heater wiring:** Connect the 12V heating element to the **Heatbed MOSFET** connector (not the Extruder Heater). The firmware controls the bed output (pin 14). The extruder heater output (pin 15) is unused and will stay off.
 
 ## Building & Flashing
 

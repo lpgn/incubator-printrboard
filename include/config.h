@@ -5,39 +5,45 @@
 
 // =============================================================================
 // PRINTRBOARD REV D — PIN DEFINITIONS
-// MCU: AT90USB1286 (Teensy++ 2.0 compatible pin numbering)
+// MCU: AT90USB1286 (Teensy++ 2.0 / Marlin pins_PRINTRBOARD.h numbering)
+// Verified against compiled binary (avr-objdump) and Marlin firmware.
 // =============================================================================
 
 // --- Stepper Motor: Egg Turner (using X-axis driver) ---
-#define TURNER_STEP_PIN     0
-#define TURNER_DIR_PIN      1
-#define TURNER_ENABLE_PIN   39
+// Marlin: X_STEP_PIN 28, X_DIR_PIN 29, X_ENABLE_PIN 19
+#define TURNER_STEP_PIN     28
+#define TURNER_DIR_PIN      29
+#define TURNER_ENABLE_PIN   19
 
-// --- Heater: Incubator heating element (heatbed MOSFET) ---
-#define HEATER_PIN          20   // Heatbed MOSFET output (PWM)
+// --- Heater: Incubator heating element ---
+// Marlin HEATER_BED_PIN 14 (2-pin Molex header above the reset button)
+#define HEATER_PIN          14
 
-// --- Thermistor: Temperature sensor near eggs (heatbed thermistor input) ---
-#define THERMISTOR_PIN      0    // Analog channel 0 (ADC0 / PF0)
+// --- Thermistor: Temperature sensor near eggs ---
+// Analog channel 0 = bed thermistor (PF0 / ADC0)
+#define THERMISTOR_PIN      0
 
 // --- Spare thermistor (extruder input, available for future use) ---
-#define THERMISTOR_SPARE_PIN 1   // Analog channel 1 (ADC1 / PF1)
+// Analog channel 1 = extruder thermistor (PF1 / ADC1)
+#define THERMISTOR_SPARE_PIN 1
 
 // --- Fan: Air circulation + cooling + humidity regulation ---
-#define FAN_PIN             16   // Fan MOSFET output (PWM)
+// Marlin FAN_PIN 16 (small 2-pin Molex FAN header)
+#define FAN_PIN             16
 
-// --- DHT22: Humidity + temperature sensor (on EXP2 header) ---
-#define DHT22_PIN           33   // PE0 on EXP2 expansion header
+// --- DHT22: Humidity + temperature sensor (optional) ---
+// Using PD2 on EXP2 header — safe, does not conflict with steppers/heaters
+#define DHT22_PIN           2
 
-// --- Status outputs (on EXP1 header) ---
-#define LED_PIN             15   // PB5 — Status LED
-#define BUZZER_PIN          16   // PB6 — Piezo buzzer for alarms
-// Note: If buzzer conflicts with FAN_PIN, use a different EXP pin.
-// For Rev D, we'll use an available EXP2 pin for buzzer instead:
-#undef BUZZER_PIN
-#define BUZZER_PIN          29   // PD4 on EXP2
+// --- Status outputs ---
+// LED on PB5 (EXP1 pin 12, or any PB5 breakout)
+#define LED_PIN             25
+// Buzzer on PD4 (EXP2 pin, does not conflict with X_DIR)
+#define BUZZER_PIN          4
 
 // --- Spare MOSFET (extruder heater output, unused) ---
-#define SPARE_MOSFET_PIN    21   // Extruder MOSFET — available for future use
+// Marlin HEATER_0_PIN 15 — will stay off in this firmware
+#define SPARE_MOSFET_PIN    15
 
 // =============================================================================
 // THERMISTOR CONFIGURATION
