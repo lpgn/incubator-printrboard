@@ -476,14 +476,61 @@ function updateCalTable(points) {
   tbody.innerHTML = '';
   if (!points || points.length === 0) {
     tbody.innerHTML = '<tr class="empty"><td colspan="3">No calibration points yet.</td></tr>';
+    window.currentCalPoints = [];
     return;
   }
+
+  window.currentCalPoints = [...points];
+
   for (let i = 0; i < points.length; i++) {
     const p = points[i];
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${i}</td><td>${p.adc}</td><td>${p.temp.toFixed(1)}</td>`;
+    tr.innerHTML = `<td>${i}</td>
+      <td><input type="number" class="cal-input" step="1" value="${p.adc}" onchange="updateCalPointLocal(${i}, 'adc', this.value)"></td>
+      <td><input type="number" class="cal-input" step="0.1" value="${p.temp.toFixed(1)}" onchange="updateCalPointLocal(${i}, 'temp', this.value)"></td>`;
     tbody.appendChild(tr);
   }
+}
+
+function updateCalPointLocal(idx, field, val) {
+  if (window.currentCalPoints && window.currentCalPoints[idx]) {
+    window.currentCalPoints[idx][field] = Number(val);
+    generateLocalCode();
+  }
+}
+
+function addEmptyLocalPoint() {
+  if (!window.currentCalPoints) window.currentCalPoints = [];
+  window.currentCalPoints.push({adc: 0, temp: 0.0});
+  updateCalTable(window.currentCalPoints);
+  generateLocalCode();
+}
+
+function generateLocalCode() {
+  const codeEl = document.getElementById('cal-code');
+  if (!codeEl) return;
+  const pts = window.currentCalPoints || [];
+  if (pts.length === 0) {
+    codeEl.textContent = "// No points available to generate code.";
+    return;
+  }
+  
+  pts.sort((a,b) => a.adc - b.adc);
+
+  let out = "// ========== HARDCODED CALIBRATION TABLE ==========\n";
+  out += "// Paste this block into src/heater.cpp, then set\n";
+  out += "// #define USE_HARDCODED_CAL_TABLE 1 in include/heater.h\n\n";
+  out += `static const uint8_t hardcodedCalCount = ${pts.length};\n`;
+  out += "static const CalibrationPoint PROGMEM hardcodedCalTable[] = {\n";
+  for (let i=0; i<pts.length; i++) {
+     out += `    {${pts[i].adc}, ${pts[i].temp.toFixed(1)}f}`;
+     if (i < pts.length - 1) out += ",";
+     out += "\n";
+  }
+  out += "};\n";
+  out += "// =================================================\n";
+  
+  codeEl.textContent = out;
 }
 
 function addCalPoint() {

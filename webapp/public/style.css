@@ -354,6 +354,20 @@ html, body {
 .cal-table th { color: var(--muted); font-weight: 500; }
 .cal-table tr.empty td { color: var(--muted); text-align: center; border-bottom: none; }
 
+.cal-input {
+  width: 100px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-family: inherit;
+}
+.cal-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 .code-block {
   background: var(--surface);
   border-radius: 8px;
