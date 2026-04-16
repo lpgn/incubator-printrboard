@@ -71,9 +71,9 @@
 #define PID_SAMPLE_MS       1000       // PID update interval (ms)
 // Conservative defaults for a fast, high-inertia heater.
 // Previous defaults (4/0.2/1) caused massive overshoot on preheat.
-#define PID_DEFAULT_KP      2.0f
-#define PID_DEFAULT_KI      0.05f
-#define PID_DEFAULT_KD      5.0f
+#define PID_DEFAULT_KP      84.11f
+#define PID_DEFAULT_KI      0.618f
+#define PID_DEFAULT_KD      2859.89f
 #define PID_OUTPUT_MIN      0
 #define PID_OUTPUT_MAX      255
 #define PID_PREHEAT_MAX     60         // Max PWM during preheat (~23%)
