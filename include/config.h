@@ -147,7 +147,7 @@
 
 #define SERIAL_BAUD         115200
 #define TERMINAL_BUF_SIZE   64         // Command input buffer size
-#define STATUS_REPORT_MS    1000UL     // Auto-report status every 1 second
+#define STATUS_REPORT_MS    10000UL    // Auto-report status every 10 seconds
 
 // =============================================================================
 // TIMING
@@ -155,5 +155,12 @@
 
 #define SECONDS_PER_DAY     86400UL
 #define MS_PER_SECOND       1000UL
+
+// =============================================================================
+// DS3231 RTC CONFIGURATION (optional — I2C on PD0/PD1)
+// =============================================================================
+
+#define RTC_I2C_ADDR        0x68       // DS3231 I2C address
+#define RTC_CHECK_INTERVAL  60000UL    // Sync software clock to RTC every 60s
 
 #endif // CONFIG_H

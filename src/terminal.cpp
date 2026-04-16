@@ -1,6 +1,7 @@
 #include "terminal.h"
 #include "config.h"
 #include "sdlogger.h"
+#include "rtc.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -8,7 +9,7 @@ Terminal::Terminal()
     : _bufPos(0), _lastAutoReport(0),
       _sm(nullptr), _pid(nullptr), _heater(nullptr), _humid(nullptr),
       _turner(nullptr), _fan(nullptr), _clock(nullptr), _storage(nullptr),
-      _safety(nullptr), _sd(nullptr) {}
+      _safety(nullptr), _rtc(nullptr), _sd(nullptr) {}
 
 void Terminal::begin() {
     Serial.begin(SERIAL_BAUD);
@@ -31,7 +32,7 @@ void Terminal::printPrompt() {
 void Terminal::setReferences(StateMachine* sm, PIDController* pid, Heater* heater,
                              HumiditySensor* humid, EggTurner* turner, FanController* fan,
                              SoftClock* clock, Storage* storage, SafetyMonitor* safety,
-                             SDLogger* sdLogger) {
+                             DS3231* rtc, SDLogger* sdLogger) {
     _sm = sm;
     _pid = pid;
     _heater = heater;
@@ -41,6 +42,7 @@ void Terminal::setReferences(StateMachine* sm, PIDController* pid, Heater* heate
     _clock = clock;
     _storage = storage;
     _safety = safety;
+    _rtc = rtc;
     _sd = sdLogger;
 }
 
@@ -185,6 +187,10 @@ void Terminal::processCommand(const char* cmd) {
         cmdOverride(cmd + 8);
     } else if (strcasecmp(cmd, "sd") == 0) {
         cmdSD();
+    } else if (strncasecmp(cmd, "custom ", 7) == 0) {
+        cmdCustom(cmd + 7);
+    } else if (strncasecmp(cmd, "time", 4) == 0) {
+        cmdTime(cmd + 4);
     } else {
         Serial.print(F("Unknown command: "));
         Serial.println(cmd);
@@ -225,6 +231,18 @@ void Terminal::cmdHelp() {
     Serial.println(F("SAFETY OVERRIDE:"));
     Serial.println(F("  override on          Disable safety shutdowns (for testing)"));
     Serial.println(F("  override off         Re-enable safety shutdowns"));
+    Serial.println();
+    Serial.println(F("CUSTOM SPECIES:"));
+    Serial.println(F("  custom days <N>      Set total incubation days"));
+    Serial.println(F("  custom stop <N>      Set turning stop day (lockdown)"));
+    Serial.println(F("  custom temp <C>      Set temperature setpoint"));
+    Serial.println(F("  custom humid <lo> <hi>  Set setter humidity range"));
+    Serial.println(F("  custom lock <lo> <hi>   Set lockdown humidity range"));
+    Serial.println(F("  custom turns <N>     Set turns per day"));
+    Serial.println();
+    Serial.println(F("RTC (if DS3231 connected):"));
+    Serial.println(F("  time                 Show current RTC time"));
+    Serial.println(F("  time set <YYYY MM DD HH MM SS>  Set RTC"));
     Serial.println();
 }
 
@@ -308,7 +326,6 @@ void Terminal::cmdStart() {
 void Terminal::cmdStop() {
     _sm->emergencyStop();
     _heater->shutdown();
-    _heater->setManualSpeed(-1);
     _turner->setEnabled(false);
     _fan->setManualSpeed(0);
     _clock->stop();
@@ -613,8 +630,12 @@ void Terminal::cmdTest(const char* args) {
         }
     }
     else if (strncasecmp(args, "motor", 5) == 0) {
-        _turner->turnNow();
-        Serial.println(F("[TEST] Motor turn triggered."));
+        if (_turner->isStepping()) {
+            Serial.println(F("[TEST] Motor is already turning. Wait for it to finish."));
+        } else {
+            _turner->turnNow();
+            Serial.println(F("[TEST] Motor turn triggered."));
+        }
     }
     else {
         Serial.println(F("Usage: test temp|heater <pwm>|fan <pwm>|motor"));
@@ -626,6 +647,157 @@ void Terminal::cmdSD() {
         _sd->printStatus();
     } else {
         Serial.println(F("[SD] Logger not available."));
+    }
+}
+
+void Terminal::cmdCustom(const char* args) {
+    while (*args == ' ') args++;
+
+    if (_sm->getState() != STATE_IDLE) {
+        Serial.println(F("Cannot edit custom species while incubation is active."));
+        return;
+    }
+
+    SpeciesPreset cp = getCustomPreset();
+
+    if (strncasecmp(args, "days ", 5) == 0) {
+        uint8_t days = (uint8_t)atoi(args + 5);
+        if (days < 1 || days > 60) {
+            Serial.println(F("Days must be 1-60."));
+            return;
+        }
+        cp.totalDays = days;
+        setCustomPreset(cp);
+        Serial.print(F(">> Custom total days: "));
+        Serial.println(days);
+    }
+    else if (strncasecmp(args, "stop ", 5) == 0) {
+        uint8_t day = (uint8_t)atoi(args + 5);
+        if (day < 1 || day > cp.totalDays) {
+            Serial.println(F("Stop day must be 1 to totalDays."));
+            return;
+        }
+        cp.turningStopDay = day;
+        setCustomPreset(cp);
+        Serial.print(F(">> Custom turning stop day: "));
+        Serial.println(day);
+    }
+    else if (strncasecmp(args, "temp ", 5) == 0) {
+        float temp = atof(args + 5);
+        if (temp < 30.0f || temp > 42.0f) {
+            Serial.println(F("Temp must be 30-42C."));
+            return;
+        }
+        cp.tempSetpoint = (uint16_t)(temp * 10.0f);
+        setCustomPreset(cp);
+        Serial.print(F(">> Custom temp: "));
+        Serial.print(temp, 1);
+        Serial.println(F("C"));
+    }
+    else if (strncasecmp(args, "humid ", 6) == 0) {
+        const char* p = args + 6;
+        uint8_t lo = (uint8_t)atoi(p);
+        while (*p && *p != ' ') p++;
+        while (*p == ' ') p++;
+        uint8_t hi = (uint8_t)atoi(p);
+        if (lo < 20 || hi > 90 || lo > hi) {
+            Serial.println(F("Humidity range must be 20-90%."));
+            return;
+        }
+        cp.humiditySetterLo = lo;
+        cp.humiditySetterHi = hi;
+        setCustomPreset(cp);
+        Serial.print(F(">> Custom setter humidity: "));
+        Serial.print(lo);
+        Serial.print('-');
+        Serial.print(hi);
+        Serial.println(F("%"));
+    }
+    else if (strncasecmp(args, "lock ", 5) == 0) {
+        const char* p = args + 5;
+        uint8_t lo = (uint8_t)atoi(p);
+        while (*p && *p != ' ') p++;
+        while (*p == ' ') p++;
+        uint8_t hi = (uint8_t)atoi(p);
+        if (lo < 20 || hi > 90 || lo > hi) {
+            Serial.println(F("Humidity range must be 20-90%."));
+            return;
+        }
+        cp.humidityLockdownLo = lo;
+        cp.humidityLockdownHi = hi;
+        setCustomPreset(cp);
+        Serial.print(F(">> Custom lockdown humidity: "));
+        Serial.print(lo);
+        Serial.print('-');
+        Serial.print(hi);
+        Serial.println(F("%"));
+    }
+    else if (strncasecmp(args, "turns ", 6) == 0) {
+        uint8_t turns = (uint8_t)atoi(args + 6);
+        if (turns < 1 || turns > 24) {
+            Serial.println(F("Turns must be 1-24."));
+            return;
+        }
+        cp.turnsPerDay = turns;
+        setCustomPreset(cp);
+        Serial.print(F(">> Custom turns/day: "));
+        Serial.println(turns);
+    }
+    else {
+        // Show current custom preset
+        Serial.println(F("Custom species preset:"));
+        printSpeciesDetails(SPECIES_CUSTOM);
+        Serial.println(F("Use 'custom <param> <value>' to edit. See 'help'."));
+    }
+}
+
+void Terminal::cmdTime(const char* args) {
+    while (*args == ' ') args++;
+
+    if (!_rtc || !_rtc->isPresent()) {
+        Serial.println(F("[RTC] DS3231 not detected."));
+        return;
+    }
+
+    if (strncasecmp(args, "set ", 4) == 0) {
+        const char* p = args + 4;
+        uint16_t year = (uint16_t)atoi(p);
+        p = nextToken(p);
+        uint8_t month = (uint8_t)atoi(p);
+        p = nextToken(p);
+        uint8_t day = (uint8_t)atoi(p);
+        p = nextToken(p);
+        uint8_t hour = (uint8_t)atoi(p);
+        p = nextToken(p);
+        uint8_t minute = (uint8_t)atoi(p);
+        p = nextToken(p);
+        uint8_t second = (uint8_t)atoi(p);
+
+        if (year < 2000 || year > 2099 || month < 1 || month > 12 || day < 1 || day > 31) {
+            Serial.println(F("Usage: time set YYYY MM DD HH MM SS"));
+            return;
+        }
+
+        if (_rtc->setDateTime(year, month, day, hour, minute, second)) {
+            Serial.print(F(">> RTC set to: "));
+            char buf[20];
+            _rtc->getFormattedDateTime(buf, sizeof(buf));
+            Serial.println(buf);
+        } else {
+            Serial.println(F("[RTC] Failed to set time."));
+        }
+    } else {
+        // Show current time + RTC temperature
+        char buf[20];
+        _rtc->getFormattedDateTime(buf, sizeof(buf));
+        Serial.print(F("[RTC] "));
+        Serial.println(buf);
+        float rtcTemp = _rtc->getTemperature();
+        if (rtcTemp > -900.0f) {
+            Serial.print(F("[RTC] Board temp: "));
+            Serial.print(rtcTemp, 1);
+            Serial.println(F("C"));
+        }
     }
 }
 

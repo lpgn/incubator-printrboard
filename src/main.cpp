@@ -11,6 +11,7 @@
 #include "clock.h"
 #include "safety.h"
 #include "terminal.h"
+#include "rtc.h"
 #include "sdlogger.h"
 
 // =============================================================================
@@ -26,6 +27,7 @@ SoftClock       incubationClock;
 Storage         storage;
 SafetyMonitor   safety;
 Terminal        terminal;
+DS3231          rtc;
 SDLogger        sdLogger;
 
 // =============================================================================
@@ -57,6 +59,7 @@ void setup() {
     turner.begin();
     fan.begin();
     safety.begin();
+    rtc.begin();
 
     pid.begin(PID_DEFAULT_KP, PID_DEFAULT_KI, PID_DEFAULT_KD);
     pid.setOutputLimits(PID_OUTPUT_MIN, PID_OUTPUT_MAX);
@@ -70,7 +73,18 @@ void setup() {
 
     // Wire up terminal references
     terminal.setReferences(&stateMachine, &pid, &heater, &humiditySensor,
-                           &turner, &fan, &incubationClock, &storage, &safety, &sdLogger);
+                           &turner, &fan, &incubationClock, &storage, &safety, &rtc, &sdLogger);
+
+    // --- DS3231 RTC detection ---
+    if (rtc.isPresent()) {
+        Serial.println(F("DS3231 RTC detected."));
+        char timeBuf[20];
+        rtc.getFormattedDateTime(timeBuf, sizeof(timeBuf));
+        Serial.print(F("  RTC time: "));
+        Serial.println(timeBuf);
+    } else {
+        Serial.println(F("No RTC detected — using software clock only."));
+    }
 
     // --- Check for power recovery ---
     SavedState saved;
@@ -312,6 +326,7 @@ void loop() {
         // Auto-recover from ERROR when alarms clear
         if (state == STATE_ERROR && !safety.isAnyAlarm()) {
             stateMachine.recoverFromError();
+            storage.logEvent(EVENT_RESUME, incubationClock.getCurrentDay());
             if (stateMachine.isHeatingAllowed()) {
                 fan.setManualSpeed(-1); // Return to auto
             }
@@ -330,7 +345,7 @@ void loop() {
     safety.updateLED();
 
     // --- Auto-report status ---
-    if (terminal.shouldAutoReport()) {
+    if (terminal.shouldAutoReport() && state != STATE_IDLE) {
         terminal.printStatus();
 
         // Also log to SD card if available

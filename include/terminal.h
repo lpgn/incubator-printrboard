@@ -13,8 +13,9 @@
 #include "storage.h"
 #include "safety.h"
 
-// Forward declaration
+// Forward declarations
 class SDLogger;
+class DS3231;
 
 // =============================================================================
 // USB Terminal — Serial command interface
@@ -47,7 +48,7 @@ public:
     void setReferences(StateMachine* sm, PIDController* pid, Heater* heater,
                        HumiditySensor* humid, EggTurner* turner, FanController* fan,
                        SoftClock* clock, Storage* storage, SafetyMonitor* safety,
-                       SDLogger* sdLogger);
+                       DS3231* rtc, SDLogger* sdLogger);
 
 private:
     char _buf[TERMINAL_BUF_SIZE];
@@ -64,6 +65,7 @@ private:
     SoftClock* _clock;
     Storage* _storage;
     SafetyMonitor* _safety;
+    DS3231* _rtc;
     SDLogger* _sd;
 
     // Process a complete command line
@@ -87,6 +89,8 @@ private:
     void cmdOverride(const char* arg);
     void cmdTest(const char* args);
     void cmdSD();
+    void cmdCustom(const char* args);
+    void cmdTime(const char* args);
 
     // Helper: skip whitespace and return pointer to next token
     const char* nextToken(const char* str);

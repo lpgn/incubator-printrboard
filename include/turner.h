@@ -32,6 +32,7 @@ public:
 
     // Is a turn currently in progress?
     bool isTurning() const { return _stepping; }
+    bool isStepping() const { return _stepping; }
 
     // Get status
     uint8_t getTurnsCompleted() const { return _turnsCompleted; }
