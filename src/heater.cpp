@@ -58,6 +58,10 @@ void Heater::shutdown() {
 }
 
 float Heater::adcToTemperature(uint16_t adcValue) {
+    return adcToTemperature(adcValue, THERM_NOMINAL_R, THERM_BETA);
+}
+
+float Heater::adcToTemperature(uint16_t adcValue, float nominalR, float beta) {
     // Convert ADC reading to resistance
     // Voltage divider: Vout = Vcc * R_therm / (R_series + R_therm)
     // ADC = Vout / Vcc * ADC_MAX
@@ -67,12 +71,12 @@ float Heater::adcToTemperature(uint16_t adcValue) {
     // Simplified Steinhart-Hart using Beta equation:
     // 1/T = 1/T0 + (1/B) * ln(R/R0)
     float steinhart;
-    steinhart = resistance / THERM_NOMINAL_R;         // R/R0
-    steinhart = log(steinhart);                         // ln(R/R0)
-    steinhart /= THERM_BETA;                           // (1/B) * ln(R/R0)
-    steinhart += 1.0f / (THERM_NOMINAL_T + 273.15f);  // + 1/T0
-    steinhart = 1.0f / steinhart;                       // Invert
-    steinhart -= 273.15f;                               // Convert to °C
+    steinhart = resistance / nominalR;                // R/R0
+    steinhart = log(steinhart);                       // ln(R/R0)
+    steinhart /= beta;                                // (1/B) * ln(R/R0)
+    steinhart += 1.0f / (THERM_NOMINAL_T + 273.15f); // + 1/T0
+    steinhart = 1.0f / steinhart;                     // Invert
+    steinhart -= 273.15f;                             // Convert to °C
 
     return steinhart;
 }

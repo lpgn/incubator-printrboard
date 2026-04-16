@@ -614,13 +614,21 @@ void Terminal::cmdTest(const char* args) {
     if (strncasecmp(args, "temp", 4) == 0) {
         uint16_t raw = _heater->readRawADC();
         float temp = _heater->readTemperature();
+        float tempEpcos = _heater->adcToTemperature(raw, 100000.0f, 3950.0f);
+        float tempCarbon = _heater->adcToTemperature(raw, 155570.0f, 4092.0f);
         Serial.print(F("[TEST] Thermistor ADC = "));
         Serial.println(raw);
         if (_heater->isSensorFailed()) {
             Serial.println(F("[TEST] Sensor FAILED (open or short)"));
         } else {
-            Serial.print(F("[TEST] Temperature = "));
+            Serial.print(F("[TEST] Active profile: "));
             Serial.print(temp, 1);
+            Serial.println(F("C"));
+            Serial.print(F("[TEST] EPCOS 100K:     "));
+            Serial.print(tempEpcos, 1);
+            Serial.println(F("C"));
+            Serial.print(F("[TEST] Carbonmini:     "));
+            Serial.print(tempCarbon, 1);
             Serial.println(F("C"));
         }
     }
