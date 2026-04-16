@@ -1,5 +1,6 @@
 #include "terminal.h"
 #include "config.h"
+#include "sdlogger.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -7,7 +8,7 @@ Terminal::Terminal()
     : _bufPos(0), _lastAutoReport(0),
       _sm(nullptr), _pid(nullptr), _heater(nullptr), _humid(nullptr),
       _turner(nullptr), _fan(nullptr), _clock(nullptr), _storage(nullptr),
-      _safety(nullptr) {}
+      _safety(nullptr), _sd(nullptr) {}
 
 void Terminal::begin() {
     Serial.begin(SERIAL_BAUD);
@@ -29,7 +30,8 @@ void Terminal::printPrompt() {
 
 void Terminal::setReferences(StateMachine* sm, PIDController* pid, Heater* heater,
                              HumiditySensor* humid, EggTurner* turner, FanController* fan,
-                             SoftClock* clock, Storage* storage, SafetyMonitor* safety) {
+                             SoftClock* clock, Storage* storage, SafetyMonitor* safety,
+                             SDLogger* sdLogger) {
     _sm = sm;
     _pid = pid;
     _heater = heater;
@@ -39,6 +41,7 @@ void Terminal::setReferences(StateMachine* sm, PIDController* pid, Heater* heate
     _clock = clock;
     _storage = storage;
     _safety = safety;
+    _sd = sdLogger;
 }
 
 bool Terminal::poll() {
@@ -180,6 +183,8 @@ void Terminal::processCommand(const char* cmd) {
         cmdTest(cmd + 5);
     } else if (strncasecmp(cmd, "override", 8) == 0) {
         cmdOverride(cmd + 8);
+    } else if (strcasecmp(cmd, "sd") == 0) {
+        cmdSD();
     } else {
         Serial.print(F("Unknown command: "));
         Serial.println(cmd);
@@ -207,6 +212,7 @@ void Terminal::cmdHelp() {
     Serial.println(F("  turn                 Force an immediate egg turn"));
     Serial.println(F("  log                  Show event log"));
     Serial.println(F("  silence              Silence buzzer alarm"));
+    Serial.println(F("  sd                   Show SD card status"));
     Serial.println(F("  reset                Factory reset (clear EEPROM)"));
     Serial.println(F("  help                 Show this help"));
     Serial.println(F(""));
@@ -608,6 +614,14 @@ void Terminal::cmdTest(const char* args) {
     }
     else {
         Serial.println(F("Usage: test temp|heater <pwm>|fan <pwm>|motor"));
+    }
+}
+
+void Terminal::cmdSD() {
+    if (_sd) {
+        _sd->printStatus();
+    } else {
+        Serial.println(F("[SD] Logger not available."));
     }
 }
 

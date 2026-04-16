@@ -45,6 +45,10 @@
 // Marlin HEATER_0_PIN 15 — will stay off in this firmware
 #define SPARE_MOSFET_PIN    15
 
+// --- SD Card (onboard microSD slot) ---
+// CS is PB6 = Teensyduino pin 26. MOSI/SCK/MISO are hardware SPI (PB2/PB1/PB3).
+#define SD_CS_PIN           26
+
 // =============================================================================
 // THERMISTOR CONFIGURATION
 // =============================================================================

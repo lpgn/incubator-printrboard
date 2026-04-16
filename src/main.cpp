@@ -11,6 +11,7 @@
 #include "clock.h"
 #include "safety.h"
 #include "terminal.h"
+#include "sdlogger.h"
 
 // =============================================================================
 // Global objects
@@ -25,6 +26,7 @@ SoftClock       incubationClock;
 Storage         storage;
 SafetyMonitor   safety;
 Terminal        terminal;
+SDLogger        sdLogger;
 
 // =============================================================================
 // Timing variables
@@ -59,9 +61,16 @@ void setup() {
     pid.begin(PID_DEFAULT_KP, PID_DEFAULT_KI, PID_DEFAULT_KD);
     pid.setOutputLimits(PID_OUTPUT_MIN, PID_OUTPUT_MAX);
 
+    // Initialize SD card (optional — continues even if no card inserted)
+    if (sdLogger.begin(SD_CS_PIN)) {
+        Serial.println(F("[SD] Card initialized. Logging enabled."));
+    } else {
+        Serial.println(F("[SD] Card not found or init failed. Logging disabled."));
+    }
+
     // Wire up terminal references
     terminal.setReferences(&stateMachine, &pid, &heater, &humiditySensor,
-                           &turner, &fan, &incubationClock, &storage, &safety);
+                           &turner, &fan, &incubationClock, &storage, &safety, &sdLogger);
 
     // --- Check for power recovery ---
     SavedState saved;
@@ -321,6 +330,20 @@ void loop() {
     // --- Auto-report status ---
     if (terminal.shouldAutoReport()) {
         terminal.printStatus();
+
+        // Also log to SD card if available
+        if (sdLogger.isReady()) {
+            sdLogger.writeLog(
+                now,
+                currentTemp,
+                currentHumidity,
+                (uint8_t)(heater.getOutput() * 100 / 255),
+                fan.getSpeedPercent(),
+                stateMachine.getStateName(),
+                incubationClock.getCurrentDay(),
+                turner.getTurnsCompleted()
+            );
+        }
     }
 
     // --- Periodic EEPROM save ---
@@ -340,6 +363,19 @@ void loop() {
                 (uint16_t)(stateMachine.getTargetTemp() * 10.0f),
                 (uint16_t)(stateMachine.getHumidityMidpoint() * 10.0f)
             );
+
+            // Also snapshot state to SD card
+            if (sdLogger.isReady()) {
+                sdLogger.writeState(
+                    (uint8_t)stateMachine.getSpeciesID(),
+                    (uint8_t)(state == STATE_PAUSED ? stateMachine.getPreviousState() : state),
+                    incubationClock.getElapsedSeconds(),
+                    incubationClock.getCurrentDay(),
+                    turner.getTurnsCompleted(),
+                    stateMachine.getTargetTemp(),
+                    stateMachine.getHumidityMidpoint()
+                );
+            }
         }
     }
 }

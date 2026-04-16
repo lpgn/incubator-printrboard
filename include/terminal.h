@@ -13,6 +13,9 @@
 #include "storage.h"
 #include "safety.h"
 
+// Forward declaration
+class SDLogger;
+
 // =============================================================================
 // USB Terminal — Serial command interface
 // =============================================================================
@@ -43,7 +46,8 @@ public:
     // Set references to all subsystems (call after constructing all objects)
     void setReferences(StateMachine* sm, PIDController* pid, Heater* heater,
                        HumiditySensor* humid, EggTurner* turner, FanController* fan,
-                       SoftClock* clock, Storage* storage, SafetyMonitor* safety);
+                       SoftClock* clock, Storage* storage, SafetyMonitor* safety,
+                       SDLogger* sdLogger);
 
 private:
     char _buf[TERMINAL_BUF_SIZE];
@@ -60,6 +64,7 @@ private:
     SoftClock* _clock;
     Storage* _storage;
     SafetyMonitor* _safety;
+    SDLogger* _sd;
 
     // Process a complete command line
     void processCommand(const char* cmd);
@@ -81,6 +86,7 @@ private:
     void cmdTurn();
     void cmdOverride(const char* arg);
     void cmdTest(const char* args);
+    void cmdSD();
 
     // Helper: skip whitespace and return pointer to next token
     const char* nextToken(const char* str);
