@@ -283,6 +283,8 @@ void Terminal::cmdStart() {
         return;
     }
 
+    _heater->clearShutdown();
+    _heater->setManualSpeed(-1);
     _sm->startPreheating(species);
     _clock->start();
     _turner->setTurnsPerDay(p.turnsPerDay);
@@ -341,6 +343,8 @@ void Terminal::cmdPause() {
 
 void Terminal::cmdResume() {
     if (_sm->getState() == STATE_PAUSED) {
+        _heater->clearShutdown();
+        _heater->setManualSpeed(-1);
         _sm->resume();
         _clock->resume();
         if (_sm->isTurningAllowed()) {

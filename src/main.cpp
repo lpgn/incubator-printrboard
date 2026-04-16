@@ -135,6 +135,8 @@ void setup() {
         if (resumeState == STATE_INCUBATING || resumeState == STATE_LOCKDOWN || resumeState == STATE_HATCHING) {
             // Start heating immediately — don't wait for resume
             // Temperature is critical during recovery
+            heater.clearShutdown();
+            heater.setManualSpeed(-1);
             fan.setManualSpeed(-1); // Auto mode
         }
 
