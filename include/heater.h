@@ -44,12 +44,24 @@ public:
     // Allow heater to operate again after shutdown
     void clearShutdown() { _isShutdown = false; }
 
+    // Temperature calibration offset (°C)
+    void setTempOffset(float offset) { _tempOffset = offset; }
+    float getTempOffset() const { return _tempOffset; }
+
+    // Custom thermistor curve (0 = use compile-time defaults)
+    void setCustomThermistor(float nominalR, float beta);
+    float getCustomNominalR() const { return _customNominalR; }
+    float getCustomBeta() const { return _customBeta; }
+
 private:
     uint8_t _currentPWM;
     bool _sensorFailed;
     bool _isShutdown;
     bool _manualMode;
     uint8_t _manualPWM;
+    float _tempOffset;
+    float _customNominalR;
+    float _customBeta;
 
     // Convert raw ADC to temperature using Steinhart-Hart
     float adcToTemperature(uint16_t adcValue);

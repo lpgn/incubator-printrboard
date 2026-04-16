@@ -75,6 +75,22 @@ void setup() {
     terminal.setReferences(&stateMachine, &pid, &heater, &humiditySensor,
                            &turner, &fan, &incubationClock, &storage, &safety, &rtc, &sdLogger);
 
+    // Load temperature calibration from EEPROM
+    float calOffset, calR25, calBeta;
+    storage.loadCalibration(calOffset, calR25, calBeta);
+    if (calOffset != 0.0f || calR25 > 0.0f || calBeta > 0.0f) {
+        heater.setTempOffset(calOffset);
+        if (calR25 > 0.0f && calBeta > 0.0f) {
+            heater.setCustomThermistor(calR25, calBeta);
+        }
+        Serial.print(F("[CAL] Loaded: offset="));
+        Serial.print(calOffset, 1);
+        Serial.print(F("C R25="));
+        Serial.print(calR25, 1);
+        Serial.print(F(" beta="));
+        Serial.println(calBeta, 1);
+    }
+
     // --- DS3231 RTC detection ---
     if (rtc.isPresent()) {
         Serial.println(F("DS3231 RTC detected."));

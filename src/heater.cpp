@@ -8,7 +8,8 @@
 
 Heater::Heater()
     : _currentPWM(0), _sensorFailed(false), _isShutdown(false),
-      _manualMode(false), _manualPWM(0) {}
+      _manualMode(false), _manualPWM(0), _tempOffset(0.0f),
+      _customNominalR(0.0f), _customBeta(0.0f) {}
 
 void Heater::begin() {
     pinMode(HEATER_PIN, OUTPUT);
@@ -33,7 +34,7 @@ float Heater::readTemperature() {
     }
 
     _sensorFailed = false;
-    return adcToTemperature(adcValue);
+    return adcToTemperature(adcValue) + _tempOffset;
 }
 
 void Heater::setOutput(uint8_t pwm) {
@@ -44,6 +45,11 @@ void Heater::setOutput(uint8_t pwm) {
     }
     _currentPWM = pwm;
     analogWrite(HEATER_PIN, _currentPWM);
+}
+
+void Heater::setCustomThermistor(float nominalR, float beta) {
+    _customNominalR = (nominalR > 0.0f) ? nominalR : 0.0f;
+    _customBeta = (beta > 0.0f) ? beta : 0.0f;
 }
 
 void Heater::setManualSpeed(int16_t speed) {
@@ -58,7 +64,9 @@ void Heater::shutdown() {
 }
 
 float Heater::adcToTemperature(uint16_t adcValue) {
-    return adcToTemperature(adcValue, THERM_NOMINAL_R, THERM_BETA);
+    float nominalR = (_customNominalR > 0.0f) ? _customNominalR : THERM_NOMINAL_R;
+    float beta = (_customBeta > 0.0f) ? _customBeta : THERM_BETA;
+    return adcToTemperature(adcValue, nominalR, beta);
 }
 
 float Heater::adcToTemperature(uint16_t adcValue, float nominalR, float beta) {

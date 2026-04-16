@@ -200,3 +200,15 @@ void Storage::writeUint16(uint16_t addr, uint16_t value) {
 uint16_t Storage::readUint16(uint16_t addr) {
     return (uint16_t)EEPROM.read(addr) | ((uint16_t)EEPROM.read(addr + 1) << 8);
 }
+
+void Storage::saveCalibration(float tempOffset, float nominalR, float beta) {
+    writeFloat(EEPROM_ADDR_TEMP_OFFSET, tempOffset);
+    writeFloat(EEPROM_ADDR_THERM_R25, nominalR);
+    writeFloat(EEPROM_ADDR_THERM_BETA, beta);
+}
+
+void Storage::loadCalibration(float& tempOffset, float& nominalR, float& beta) {
+    tempOffset = readFloat(EEPROM_ADDR_TEMP_OFFSET);
+    nominalR = readFloat(EEPROM_ADDR_THERM_R25);
+    beta = readFloat(EEPROM_ADDR_THERM_BETA);
+}

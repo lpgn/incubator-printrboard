@@ -90,6 +90,7 @@ private:
     void cmdTest(const char* args);
     void cmdSD();
     void cmdCustom(const char* args);
+    void cmdCal(const char* args);
     void cmdTime(const char* args);
 
     // Helper: skip whitespace and return pointer to next token

@@ -51,6 +51,10 @@ public:
     // Print event log to serial
     void printEventLog();
 
+    // Save/load temperature calibration data
+    void saveCalibration(float tempOffset, float nominalR, float beta);
+    void loadCalibration(float& tempOffset, float& nominalR, float& beta);
+
 private:
     uint8_t calcChecksum(const SavedState& s);
     void writeFloat(uint16_t addr, float value);

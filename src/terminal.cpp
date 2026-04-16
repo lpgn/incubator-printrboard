@@ -189,6 +189,8 @@ void Terminal::processCommand(const char* cmd) {
         cmdSD();
     } else if (strncasecmp(cmd, "custom ", 7) == 0) {
         cmdCustom(cmd + 7);
+    } else if (strncasecmp(cmd, "cal ", 4) == 0) {
+        cmdCal(cmd + 4);
     } else if (strncasecmp(cmd, "time", 4) == 0) {
         cmdTime(cmd + 4);
     } else {
@@ -239,6 +241,12 @@ void Terminal::cmdHelp() {
     Serial.println(F("  custom humid <lo> <hi>  Set setter humidity range"));
     Serial.println(F("  custom lock <lo> <hi>   Set lockdown humidity range"));
     Serial.println(F("  custom turns <N>     Set turns per day"));
+    Serial.println();
+    Serial.println(F("CALIBRATION:"));
+    Serial.println(F("  cal temp <offset>    Add offset to all temp readings (e.g. -14.2)"));
+    Serial.println(F("  cal temp actual <C>  Set offset based on trusted thermometer"));
+    Serial.println(F("  cal reset            Clear temp offset and custom thermistor"));
+    Serial.println(F("  set thermistor <R25> <beta>  Set custom thermistor curve"));
     Serial.println();
     Serial.println(F("RTC (if DS3231 connected):"));
     Serial.println(F("  time                 Show current RTC time"));
@@ -555,8 +563,25 @@ void Terminal::cmdSet(const char* args) {
         Serial.print('-');
         Serial.println(maxS);
     }
+    else if (strncasecmp(args, "thermistor ", 11) == 0) {
+        const char* p = args + 11;
+        float nominalR = atof(p);
+        while (*p && *p != ' ') p++;
+        while (*p == ' ') p++;
+        float beta = atof(p);
+        if (nominalR <= 0.0f || beta <= 0.0f) {
+            Serial.println(F("Usage: set thermistor <R25> <beta> (values must be > 0)"));
+            return;
+        }
+        _heater->setCustomThermistor(nominalR, beta);
+        _storage->saveCalibration(_heater->getTempOffset(), nominalR, beta);
+        Serial.print(F(">> Custom thermistor: R25="));
+        Serial.print(nominalR, 1);
+        Serial.print(F(" beta="));
+        Serial.println(beta, 1);
+    }
     else {
-        Serial.println(F("Usage: set temp|humidity|pid|turns|turn deg|turn rpm|fan <values>"));
+        Serial.println(F("Usage: set temp|humidity|pid|turns|turn deg|turn rpm|fan|thermistor <values>"));
     }
 }
 
@@ -782,6 +807,38 @@ void Terminal::cmdCustom(const char* args) {
         Serial.println(F("Custom species preset:"));
         printSpeciesDetails(SPECIES_CUSTOM);
         Serial.println(F("Use 'custom <param> <value>' to edit. See 'help'."));
+    }
+}
+
+void Terminal::cmdCal(const char* args) {
+    while (*args == ' ') args++;
+
+    if (strncasecmp(args, "temp actual ", 12) == 0) {
+        float actualTemp = atof(args + 12);
+        float currentReading = _heater->readTemperature() - _heater->getTempOffset(); // raw before offset
+        float offset = actualTemp - currentReading;
+        _heater->setTempOffset(offset);
+        _storage->saveCalibration(offset, _heater->getCustomNominalR(), _heater->getCustomBeta());
+        Serial.print(F(">> Temp calibrated. Offset = "));
+        Serial.print(offset, 1);
+        Serial.println(F("C applied and saved."));
+    }
+    else if (strncasecmp(args, "temp ", 5) == 0) {
+        float offset = atof(args + 5);
+        _heater->setTempOffset(offset);
+        _storage->saveCalibration(offset, _heater->getCustomNominalR(), _heater->getCustomBeta());
+        Serial.print(F(">> Temp offset set to "));
+        Serial.print(offset, 1);
+        Serial.println(F("C and saved."));
+    }
+    else if (strcasecmp(args, "reset") == 0) {
+        _heater->setTempOffset(0.0f);
+        _heater->setCustomThermistor(0.0f, 0.0f);
+        _storage->saveCalibration(0.0f, 0.0f, 0.0f);
+        Serial.println(F(">> Calibration reset. Using compile-time thermistor defaults."));
+    }
+    else {
+        Serial.println(F("Usage: cal temp <offset> | cal temp actual <C> | cal reset"));
     }
 }
 
