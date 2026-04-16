@@ -19,6 +19,8 @@ let lastStatus = {
   day: null,
   totalDays: null,
   temp: null,
+  adc: null,
+  adcTarget: null,
   humidity: null,
   heater: null,
   fan: null,
@@ -77,34 +79,42 @@ function parseAlarms(line) {
 function parseStatusLine(line) {
   let result = null;
 
-  // Match: [DAY 01/21] T=21.8C TARGET=37.5C H=0% HTR=0% FAN=29% STATE=ERROR
-  const dayMatch = line.match(/\[DAY\s+(\d+)\/(\d+)\]\s+T=([\d.-]+)C\s+TARGET=([\d.]+)C\s+H=(\d+)%\s+HTR=(\d+)%\s+FAN=(\d+)%\s+STATE=(\S+)/);
+  // Match: [DAY 01/21] T=21.8C ADC=642 TARGET=37.5C H=0% HTR=0% FAN=29% STATE=ERROR
+  // or:   [DAY 01/21] T=21.8C ADC=642 ADCTARGET=580 H=0% HTR=0% FAN=29% STATE=ERROR
+  const dayMatch = line.match(/\[DAY\s+(\d+)\/(\d+)\]\s+T=([\d.-]+)C\s+ADC=(\d+)\s+(?:TARGET=([\d.]+)C|ADCTARGET=(\d+))\s+H=(\d+)%\s+HTR=(\d+)%\s+FAN=(\d+)%\s+STATE=(\S+)/);
   if (dayMatch) {
-    lastStatus.targetTemp = parseFloat(dayMatch[4]);
+    const adcTarget = dayMatch[6] ? parseInt(dayMatch[6], 10) : null;
+    lastStatus.targetTemp = adcTarget ? null : parseFloat(dayMatch[5]);
     result = {
       type: 'status',
       day: parseInt(dayMatch[1], 10),
       totalDays: parseInt(dayMatch[2], 10),
       temp: parseFloat(dayMatch[3]),
-      humidity: parseInt(dayMatch[5], 10),
-      heater: parseInt(dayMatch[6], 10),
-      fan: parseInt(dayMatch[7], 10),
-      state: dayMatch[8]
+      adc: parseInt(dayMatch[4], 10),
+      adcTarget: adcTarget,
+      humidity: parseInt(dayMatch[7], 10),
+      heater: parseInt(dayMatch[8], 10),
+      fan: parseInt(dayMatch[9], 10),
+      state: dayMatch[10]
     };
   }
 
-  // Match: [IDLE] T=21.8C TARGET=37.5C H=0% HTR=0% FAN=0%
-  const idleMatch = line.match(/\[IDLE\]\s+T=([\d.-]+)C\s+TARGET=([\d.]+)C\s+H=(\d+)%\s+HTR=(\d+)%\s+FAN=(\d+)%/);
+  // Match: [IDLE] T=21.8C ADC=642 TARGET=37.5C H=0% HTR=0% FAN=0%
+  // or:   [IDLE] T=21.8C ADC=642 ADCTARGET=580 H=0% HTR=0% FAN=0%
+  const idleMatch = line.match(/\[IDLE\]\s+T=([\d.-]+)C\s+ADC=(\d+)\s+(?:TARGET=([\d.]+)C|ADCTARGET=(\d+))\s+H=(\d+)%\s+HTR=(\d+)%\s+FAN=(\d+)%/);
   if (idleMatch) {
-    lastStatus.targetTemp = parseFloat(idleMatch[2]);
+    const adcTarget = idleMatch[4] ? parseInt(idleMatch[4], 10) : null;
+    lastStatus.targetTemp = adcTarget ? null : parseFloat(idleMatch[3]);
     result = {
       type: 'status',
       day: 0,
       totalDays: 0,
       temp: parseFloat(idleMatch[1]),
-      humidity: parseInt(idleMatch[3], 10),
-      heater: parseInt(idleMatch[4], 10),
-      fan: parseInt(idleMatch[5], 10),
+      adc: parseInt(idleMatch[2], 10),
+      adcTarget: adcTarget,
+      humidity: parseInt(idleMatch[5], 10),
+      heater: parseInt(idleMatch[6], 10),
+      fan: parseInt(idleMatch[7], 10),
       state: 'IDLE'
     };
   }
@@ -123,6 +133,7 @@ function parseStatusLine(line) {
     history.push(point);
     if (history.length > MAX_HISTORY) history.shift();
     broadcast({ type: 'history', history: [point] });
+    console.log('Parsed status:', result.state, 'adc=', result.adc, 'temp=', result.temp);
   }
 
   return result;
@@ -157,6 +168,16 @@ function openSerial() {
     lastStatus.connected = true;
     broadcast({ type: 'connection', connected: true, port: SERIAL_PATH });
 
+    // Request calibration table whenever port opens
+    setTimeout(() => {
+      if (port && port.isOpen) {
+        port.write('cal table\r\n', (err) => {
+          if (err) console.error('Failed to request cal table on open:', err.message);
+          else console.log('Requested cal table on serial open');
+        });
+      }
+    }, 500);
+
     parser = port.pipe(new ReadlineParser({ delimiter: '\n' }));
     parser.on('data', (line) => {
       const raw = line.trim();
@@ -171,6 +192,24 @@ function openSerial() {
       const targetMatch = raw.match(/target:\s*([\d.]+)C/i);
       if (targetMatch) {
         lastStatus.targetTemp = parseFloat(targetMatch[1]);
+      }
+
+      const calTableMatch = raw.match(/^\[CALTABLE\]\s+(\d+):\s*(.*)$/);
+      if (calTableMatch) {
+        const count = parseInt(calTableMatch[1], 10);
+        const rest = calTableMatch[2].trim();
+        const points = [];
+        if (rest) {
+          const pairs = rest.split(/\s+/);
+          for (const p of pairs) {
+            const parts = p.split(',');
+            if (parts.length >= 2) {
+              points.push({ adc: parseInt(parts[0], 10), temp: parseFloat(parts[1]) });
+            }
+          }
+        }
+        console.log('Parsed caltable:', count, points);
+        broadcast({ type: 'caltable', count, points });
       }
 
       const status = parseStatusLine(raw);
@@ -206,6 +245,18 @@ wss.on('connection', (ws) => {
   if (history.length) {
     ws.send(JSON.stringify({ type: 'history', history }));
   }
+
+  // Ask firmware for calibration table
+  setTimeout(() => {
+    if (port && port.isOpen) {
+      port.write('cal table\r\n', (err) => {
+        if (err) console.error('Failed to request cal table on WS connect:', err.message);
+        else console.log('Requested cal table on WS connect');
+      });
+    } else {
+      console.log('Serial port not open yet, skipping cal table request on WS connect');
+    }
+  }, 500);
 
   ws.on('message', (message) => {
     let cmd = '';

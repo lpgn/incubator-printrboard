@@ -118,11 +118,20 @@ void Terminal::printStatus() {
     float targetTemp = _sm->getTargetTemp();
 
     if (state == STATE_IDLE) {
+        uint16_t adc = _heater->readRawADC();
         Serial.print(F("[IDLE] T="));
         Serial.print(temp, 1);
-        Serial.print(F("C TARGET="));
-        Serial.print(targetTemp, 1);
-        Serial.print(F("C H="));
+        Serial.print(F("C ADC="));
+        Serial.print(adc);
+        if (_sm->isAdcTargetMode()) {
+            Serial.print(F(" ADCTARGET="));
+            Serial.print(_sm->getAdcTarget());
+        } else {
+            Serial.print(F(" TARGET="));
+            Serial.print(targetTemp, 1);
+            Serial.print(F("C"));
+        }
+        Serial.print(F(" H="));
         Serial.print(humidity, 0);
         Serial.print(F("% HTR="));
         Serial.print((uint16_t)_heater->getOutput() * 100 / 255);
@@ -140,9 +149,18 @@ void Terminal::printStatus() {
     Serial.print(_sm->getActivePreset().totalDays);
     Serial.print(F("] T="));
     Serial.print(temp, 1);
-    Serial.print(F("C TARGET="));
-    Serial.print(targetTemp, 1);
-    Serial.print(F("C H="));
+    uint16_t adc = _heater->readRawADC();
+    Serial.print(F("C ADC="));
+    Serial.print(adc);
+    if (_sm->isAdcTargetMode()) {
+        Serial.print(F(" ADCTARGET="));
+        Serial.print(_sm->getAdcTarget());
+    } else {
+        Serial.print(F(" TARGET="));
+        Serial.print(targetTemp, 1);
+        Serial.print(F("C"));
+    }
+    Serial.print(F(" H="));
     Serial.print(humidity, 0);
     Serial.print(F("% HTR="));
     Serial.print((uint16_t)_heater->getOutput() * 100 / 255);
@@ -218,6 +236,8 @@ void Terminal::cmdHelp() {
     Serial.println(F("  resume               Resume incubation / power recovery"));
     Serial.println(F("  status               Show detailed status"));
     Serial.println(F("  set temp <C>         Override temperature setpoint"));
+    Serial.println(F("  set adc <value>      Override PID target to raw ADC value (0-1023)"));
+    Serial.println(F("  set adc off          Disable ADC target mode, return to temp"));
     Serial.println(F("  set maxtemp <C>      Set safety max temp (35-50C)"));
     Serial.println(F("  set humidity <lo> <hi>  Override humidity range (%)"));
     Serial.println(F("  set pid <Kp> <Ki> <Kd>  Set PID tuning"));
@@ -252,7 +272,12 @@ void Terminal::cmdHelp() {
     Serial.println(F("CALIBRATION:"));
     Serial.println(F("  cal temp <offset>    Add offset to all temp readings (e.g. -14.2)"));
     Serial.println(F("  cal temp actual <C>  Set offset based on trusted thermometer"));
-    Serial.println(F("  cal reset            Clear temp offset and custom thermistor"));
+    Serial.println(F("  cal point <C>        Record ADC->actualTemp calibration point"));
+    Serial.println(F("  cal points           List recorded calibration points"));
+    Serial.println(F("  cal table            Output single-line table for webapp"));
+    Serial.println(F("  cal generate         Print C code for hardcoded table"));
+    Serial.println(F("  cal clear points     Erase all recorded points"));
+    Serial.println(F("  cal reset            Clear temp offset, custom thermistor, and points"));
     Serial.println(F("  set thermistor <R25> <beta>  Set custom thermistor curve"));
     Serial.println();
     Serial.println(F("RTC (if DS3231 connected):"));
@@ -415,11 +440,19 @@ void Terminal::cmdStatus() {
     } else {
         Serial.print(F("FAIL"));
     }
-    Serial.print(F("C (target: "));
-    Serial.print(_sm->getTargetTemp(), 1);
-    Serial.print(F("C | max: "));
-    Serial.print(_safety->getMaxTemp(), 1);
-    Serial.println(F("C)"));
+    if (_sm->isAdcTargetMode()) {
+        Serial.print(F("C (ADC target: "));
+        Serial.print(_sm->getAdcTarget());
+        Serial.print(F(" | raw ADC: "));
+        Serial.print(_heater->readRawADC());
+        Serial.println(F(")"));
+    } else {
+        Serial.print(F("C (target: "));
+        Serial.print(_sm->getTargetTemp(), 1);
+        Serial.print(F("C | max: "));
+        Serial.print(_safety->getMaxTemp(), 1);
+        Serial.println(F("C)"));
+    }
 
     Serial.print(F("  Humid: "));
     Serial.print(_humid->getHumidity(), 0);
@@ -849,14 +882,35 @@ void Terminal::cmdCal(const char* args) {
         Serial.print(offset, 1);
         Serial.println(F("C and saved."));
     }
+    else if (strncasecmp(args, "point ", 6) == 0) {
+        float actualTemp = atof(args + 6);
+        if (actualTemp < 10.0f || actualTemp > 60.0f) {
+            Serial.println(F("Usage: cal point <actual temperature in C>"));
+            return;
+        }
+        _heater->addCalibrationPoint(actualTemp);
+    }
+    else if (strcasecmp(args, "points") == 0) {
+        _heater->printCalibrationPoints();
+    }
+    else if (strcasecmp(args, "table") == 0) {
+        _heater->printCalibrationTable();
+    }
+    else if (strcasecmp(args, "generate") == 0) {
+        _heater->generateTableCode();
+    }
+    else if (strcasecmp(args, "clear points") == 0) {
+        _heater->clearCalibrationPoints();
+    }
     else if (strcasecmp(args, "reset") == 0) {
         _heater->setTempOffset(0.0f);
         _heater->setCustomThermistor(0.0f, 0.0f);
+        _heater->clearCalibrationPoints();
         _storage->saveCalibration(0.0f, 0.0f, 0.0f);
         Serial.println(F(">> Calibration reset. Using compile-time thermistor defaults."));
     }
     else {
-        Serial.println(F("Usage: cal temp <offset> | cal temp actual <C> | cal reset"));
+        Serial.println(F("Usage: cal temp <offset> | cal temp actual <C> | cal point <C> | cal points | cal generate | cal clear points | cal reset"));
     }
 }
 

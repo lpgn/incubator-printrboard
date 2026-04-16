@@ -229,6 +229,7 @@ void loop() {
         lastPIDUpdate = now;
 
         currentTemp = heater.readTemperature();
+        uint16_t currentADC = heater.readRawADC();
 
         if (stateMachine.isHeatingAllowed()) {
             if (heater.isSensorFailed()) {
@@ -254,13 +255,20 @@ void loop() {
                         (uint16_t)(stateMachine.getHumidityMidpoint() * 10.0f)
                     );
                 }
-            } else if (currentTemp > safety.getMaxTemp()) {
-                // Over-temp — emergency shutdown
+            } else if (currentTemp > safety.getMaxTemp() && !stateMachine.isAdcTargetMode()) {
+                // Over-temp — emergency shutdown (only when NOT in ADC target mode)
                 heater.shutdown();
                 fan.fullSpeed();
             } else {
                 // Normal PID control
-                int16_t output = pid.compute(currentTemp);
+                int16_t output;
+                if (stateMachine.isAdcTargetMode()) {
+                    pid.setSetpoint((float)stateMachine.getAdcTarget());
+                    output = pid.compute((float)currentADC);
+                } else {
+                    pid.setSetpoint(stateMachine.getTargetTemp());
+                    output = pid.compute(currentTemp);
+                }
                 // Clamp preheat output to avoid massive overshoot
                 if (state == STATE_PREHEATING && output > stateMachine.getPreheatMax()) {
                     output = stateMachine.getPreheatMax();
@@ -268,8 +276,8 @@ void loop() {
                 heater.setOutput((uint8_t)output);
             }
 
-            // Preheat stability check
-            if (state == STATE_PREHEATING) {
+            // Preheat stability check (only in normal temp mode)
+            if (state == STATE_PREHEATING && !stateMachine.isAdcTargetMode()) {
                 stateMachine.updatePreheatStability(currentTemp, stateMachine.getTargetTemp());
                 if (stateMachine.isPreheatStable()) {
                     stateMachine.transitionToIncubating();

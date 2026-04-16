@@ -6,6 +6,7 @@ StateMachine::StateMachine()
       _speciesID(SPECIES_CHICKEN), _tempOverride(false),
       _overrideTemp(37.5f), _humidOverride(false),
       _overrideHumLo(45), _overrideHumHi(55),
+      _adcTargetMode(false), _adcTarget(0),
       _preheatStableMs(0), _lastPreheatCheck(0),
       _preheatMax(PID_PREHEAT_MAX) {
     _preset = getSpeciesPreset(SPECIES_CHICKEN);
@@ -148,6 +149,16 @@ void StateMachine::setHumidityOverride(uint8_t lo, uint8_t hi) {
 void StateMachine::clearOverrides() {
     _tempOverride = false;
     _humidOverride = false;
+}
+
+void StateMachine::setAdcTarget(uint16_t adc) {
+    _adcTargetMode = true;
+    _adcTarget = adc;
+}
+
+void StateMachine::clearAdcTarget() {
+    _adcTargetMode = false;
+    _adcTarget = 0;
 }
 
 float StateMachine::getTargetTemp() const {

@@ -56,6 +56,12 @@ public:
     void setHumidityOverride(uint8_t lo, uint8_t hi);
     void clearOverrides();
 
+    // ADC target mode (for calibration precision)
+    void setAdcTarget(uint16_t adc);
+    void clearAdcTarget();
+    bool isAdcTargetMode() const { return _adcTargetMode; }
+    uint16_t getAdcTarget() const { return _adcTarget; }
+
     // Get effective targets for current phase
     float getTargetTemp() const;
     uint8_t getHumidityLo() const;
@@ -96,6 +102,10 @@ private:
     bool _humidOverride;
     uint8_t _overrideHumLo;
     uint8_t _overrideHumHi;
+
+    // ADC target mode
+    bool _adcTargetMode;
+    uint16_t _adcTarget;
 
     // Preheat tracking
     uint32_t _preheatStableMs;

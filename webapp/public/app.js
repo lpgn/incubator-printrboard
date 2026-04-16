@@ -49,6 +49,9 @@ function connect() {
     } else if (data.type === 'history') {
       if (!tempChart) initChart();
       appendHistory(data.history);
+    } else if (data.type === 'caltable') {
+      console.log('WS caltable:', data);
+      updateCalTable(data.points);
     } else if (data.type === 'log') {
       appendLog(data.line);
     }
@@ -88,6 +91,24 @@ function updateStatus(s) {
     els.day.textContent = `${s.day} / ${s.totalDays}`;
   } else if (s.state === 'IDLE') {
     els.day.textContent = '-';
+  }
+
+  // Update calibration live display
+  if (s.adc !== null && s.adc !== undefined) {
+    console.log('Status adc:', s.adc);
+    const adcEl = document.getElementById('cal-adc');
+    if (adcEl) adcEl.textContent = s.adc;
+  }
+  if (s.temp !== null && s.temp !== undefined) {
+    const ftEl = document.getElementById('cal-firmware-temp');
+    if (ftEl) ftEl.textContent = s.temp.toFixed(1);
+  }
+  if (s.adcTarget !== null && s.adcTarget !== undefined) {
+    const ttEl = document.getElementById('cal-target-temp');
+    if (ttEl) ttEl.textContent = 'ADC=' + s.adcTarget;
+  } else if (s.targetTemp !== null && s.targetTemp !== undefined) {
+    const ttEl = document.getElementById('cal-target-temp');
+    if (ttEl) ttEl.textContent = s.targetTemp.toFixed(1);
   }
 }
 
@@ -166,6 +187,15 @@ function sendPID() {
 function sendTargetTemp() {
   const val = document.getElementById('target-temp').value;
   send('set temp ' + val);
+}
+
+function sendAdcTarget() {
+  const val = document.getElementById('target-adc').value;
+  if (val === '') {
+    appendLog('[ERR] Enter an ADC target value');
+    return;
+  }
+  send('set adc ' + val);
 }
 
 function sendHumidityRange() {
@@ -350,6 +380,51 @@ function appendLog(line) {
   while (logEl.children.length > 300) {
     logEl.removeChild(logEl.firstChild);
   }
+
+  // Collect generated C code into calibration panel
+  const codeEl = document.getElementById('cal-code');
+  if (codeEl) {
+    if (line.includes('HARDCODED CALIBRATION TABLE')) {
+      codeEl.textContent = '';
+      codeEl.dataset.collecting = 'true';
+    }
+    if (codeEl.dataset.collecting === 'true') {
+      codeEl.textContent += line + '\n';
+      if (line.includes('=================================================')) {
+        codeEl.dataset.collecting = 'false';
+      }
+    }
+  }
+}
+
+function updateCalTable(points) {
+  console.log('updateCalTable called with', points);
+  const tbody = document.getElementById('cal-tbody');
+  if (!tbody) {
+    console.warn('cal-tbody element not found');
+    return;
+  }
+  tbody.innerHTML = '';
+  if (!points || points.length === 0) {
+    tbody.innerHTML = '<tr class="empty"><td colspan="3">No calibration points yet.</td></tr>';
+    return;
+  }
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i];
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${i}</td><td>${p.adc}</td><td>${p.temp.toFixed(1)}</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+function addCalPoint() {
+  const val = document.getElementById('cal-actual').value;
+  if (val === '') {
+    appendLog('[ERR] Enter the actual thermometer reading');
+    return;
+  }
+  send('cal point ' + val);
+  document.getElementById('cal-actual').value = '';
 }
 
 function escapeHtml(text) {

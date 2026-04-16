@@ -256,3 +256,92 @@ pre {
 
 pre .line { display: block; }
 pre .time { color: #64748b; margin-right: 8px; }
+
+/* Calibration section */
+.calibration {
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.cal-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.cal-live {
+  background: #0f172a;
+  border-radius: 8px;
+  padding: 12px 16px;
+  text-align: center;
+  min-width: 90px;
+}
+.cal-live .label {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.cal-live .value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-top: 4px;
+}
+
+.cal-inputs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.cal-inputs label {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.cal-inputs input[type="number"] {
+  width: 90px;
+  background: #0f172a;
+  color: var(--text);
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+.cal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+  margin-bottom: 12px;
+}
+.cal-table th,
+.cal-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid #334155;
+}
+.cal-table th {
+  color: var(--muted);
+  font-weight: 500;
+}
+.cal-table tr.empty td {
+  color: var(--muted);
+  text-align: center;
+  border-bottom: none;
+}
+
+.code-block {
+  background: #0b1120;
+  border-radius: 8px;
+  padding: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.85rem;
+  color: #cbd5e1;
+  white-space: pre-wrap;
+  max-height: 220px;
+  overflow-y: auto;
+  margin: 0;
+}
