@@ -165,10 +165,11 @@
 #define EEPROM_ADDR_CUSTOM     0x20    // 96 bytes — custom species params
 #define EEPROM_ADDR_LOG        0x80    // 128 bytes — event log
 
-// Calibration storage (free space before log)
-#define EEPROM_ADDR_TEMP_OFFSET 0x34   // 4 bytes (float)
-#define EEPROM_ADDR_THERM_R25   0x38   // 4 bytes (float)
-#define EEPROM_ADDR_THERM_BETA  0x3C   // 4 bytes (float)
+// Calibration storage (placed in free space after custom species struct)
+#define EEPROM_ADDR_CALIB_BASE  0x60   // Start of calibration block
+#define EEPROM_ADDR_TEMP_OFFSET 0x60   // 4 bytes (float)
+#define EEPROM_ADDR_THERM_R25   0x64   // 4 bytes (float)
+#define EEPROM_ADDR_THERM_BETA  0x68   // 4 bytes (float)
 
 // =============================================================================
 // SERIAL / TERMINAL CONFIGURATION

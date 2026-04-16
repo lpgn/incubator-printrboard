@@ -815,8 +815,8 @@ void Terminal::cmdCal(const char* args) {
 
     if (strncasecmp(args, "temp actual ", 12) == 0) {
         float actualTemp = atof(args + 12);
-        float currentReading = _heater->readTemperature() - _heater->getTempOffset(); // raw before offset
-        float offset = actualTemp - currentReading;
+        float rawTemp = _heater->adcToTemperature(_heater->readRawADC()); // true sensor reading before offset
+        float offset = actualTemp - rawTemp;
         _heater->setTempOffset(offset);
         _storage->saveCalibration(offset, _heater->getCustomNominalR(), _heater->getCustomBeta());
         Serial.print(F(">> Temp calibrated. Offset = "));

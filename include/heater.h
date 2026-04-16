@@ -63,10 +63,10 @@ private:
     float _customNominalR;
     float _customBeta;
 
-    // Convert raw ADC to temperature using Steinhart-Hart
+public:
+    // Convert raw ADC to temperature using active thermistor profile
     float adcToTemperature(uint16_t adcValue);
 
-public:
     // Convert raw ADC using arbitrary thermistor constants (for comparison/testing)
     float adcToTemperature(uint16_t adcValue, float nominalR, float beta);
 };

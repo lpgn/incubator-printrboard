@@ -34,7 +34,8 @@ float Heater::readTemperature() {
     }
 
     _sensorFailed = false;
-    return adcToTemperature(adcValue) + _tempOffset;
+    float offset = (_tempOffset == _tempOffset) ? _tempOffset : 0.0f; // NaN guard
+    return adcToTemperature(adcValue) + offset;
 }
 
 void Heater::setOutput(uint8_t pwm) {

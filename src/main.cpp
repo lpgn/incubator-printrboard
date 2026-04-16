@@ -78,6 +78,10 @@ void setup() {
     // Load temperature calibration from EEPROM
     float calOffset, calR25, calBeta;
     storage.loadCalibration(calOffset, calR25, calBeta);
+    // Guard against NaN from uninitialized EEPROM
+    if (calOffset != calOffset) calOffset = 0.0f;
+    if (calR25 != calR25) calR25 = 0.0f;
+    if (calBeta != calBeta) calBeta = 0.0f;
     if (calOffset != 0.0f || calR25 > 0.0f || calBeta > 0.0f) {
         heater.setTempOffset(calOffset);
         if (calR25 > 0.0f && calBeta > 0.0f) {
