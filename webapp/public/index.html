@@ -4,220 +4,346 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Egg Incubator Monitor</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=4" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>🥚 Egg Incubator</h1>
-      <span id="conn-badge" class="badge disconnected">Disconnected</span>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <h1>🥚 Egg Incubator</h1>
+        <span id="conn-badge" class="badge disconnected">Disconnected</span>
+      </div>
+      <div class="state-display">
+        <span id="header-state" class="state-badge">IDLE</span>
+        <span id="header-day" class="day-badge">Day -</span>
+      </div>
+      <div class="global-actions">
+        <button class="btn btn-success" onclick="send('start')">▶ Start</button>
+        <button class="btn btn-danger" onclick="send('stop')">■ Stop</button>
+        <button class="btn" onclick="send('pause')">⏸ Pause</button>
+        <button class="btn" onclick="send('resume')">⏵ Resume</button>
+        <button class="btn btn-secondary" onclick="send('reset')">↺ Reset</button>
+      </div>
     </header>
 
-    <section class="cards">
-      <div class="card">
-        <div class="label">Temperature</div>
-        <div class="value" id="val-temp">--</div>
-        <div class="unit">°C</div>
-      </div>
-      <div class="card">
-        <div class="label">Humidity</div>
-        <div class="value" id="val-humidity">--</div>
-        <div class="unit">%</div>
-      </div>
-      <div class="card">
-        <div class="label">Heater</div>
-        <div class="value" id="val-heater">--</div>
-        <div class="unit">%</div>
-      </div>
-      <div class="card">
-        <div class="label">Fan</div>
-        <div class="value" id="val-fan">--</div>
-        <div class="unit">%</div>
-      </div>
-      <div class="card wide">
-        <div class="label">State</div>
-        <div class="value" id="val-state">--</div>
-        <div class="sub" id="val-state-reason"></div>
-      </div>
-      <div class="card wide">
-        <div class="label">Day</div>
-        <div class="value" id="val-day">--</div>
-      </div>
-    </section>
+    <nav class="tabbar">
+      <button class="tab-btn active" data-tab="dashboard" onclick="showTab('dashboard')">Dashboard</button>
+      <button class="tab-btn" data-tab="incubation" onclick="showTab('incubation')">Incubation</button>
+      <button class="tab-btn" data-tab="settings" onclick="showTab('settings')">Settings</button>
+      <button class="tab-btn" data-tab="calibration" onclick="showTab('calibration')">Calibration</button>
+      <button class="tab-btn" data-tab="terminal" onclick="showTab('terminal')">Terminal</button>
+    </nav>
 
-    <section class="alarms">
-      <h2>Alarms</h2>
-      <div class="leds">
-        <div class="led" id="led-sensorFail"><span class="dot"></span>Sensor Fail</div>
-        <div class="led" id="led-overTemp"><span class="dot"></span>Over Temp</div>
-        <div class="led" id="led-underTemp"><span class="dot"></span>Under Temp</div>
-        <div class="led" id="led-dhtFail"><span class="dot"></span>DHT Fail</div>
-        <div class="led" id="led-humidHigh"><span class="dot"></span>Humid High</div>
-        <div class="led" id="led-humidLow"><span class="dot"></span>Humid Low</div>
-        <div class="led" id="led-errorState"><span class="dot"></span>Error State</div>
-      </div>
-      <button id="btn-override" class="toggle" onclick="toggleOverride()">Override Errors</button>
-    </section>
-
-    <section class="controls">
-      <h2>Quick Commands</h2>
-      <div class="btn-group">
-        <button onclick="send('help')">Help</button>
-        <button onclick="send('status')">Status</button>
-        <button onclick="send('species')">Species</button>
-      </div>
-      <div class="btn-group">
-        <button onclick="send('select chicken')">🐔 Chicken</button>
-        <button onclick="send('select pigeon')">🕊️ Pigeon</button>
-        <button onclick="send('select quail')">🐦 Quail</button>
-        <button onclick="send('select duck')">🦆 Duck</button>
-        <button onclick="send('select turkey')">🦃 Turkey</button>
-        <button onclick="send('select goose')">🪿 Goose</button>
-        <button onclick="send('select guinea')">🐓 Guinea</button>
-      </div>
-      <div class="btn-group">
-        <button onclick="send('start')">▶ Start</button>
-        <button onclick="send('stop')">■ Stop</button>
-        <button onclick="send('pause')">⏸ Pause</button>
-        <button onclick="send('resume')">⏵ Resume</button>
-        <button onclick="send('autotune')">🔄 Autotune PID</button>
-      </div>
-      <div class="btn-group">
-        <button onclick="send('test temp')">Test Temp</button>
-        <button onclick="send('test heater 64')">Heater Low</button>
-        <button onclick="send('test heater 0')">Heater Off</button>
-        <button onclick="send('test heater -1')">Heater Auto</button>
-        <button onclick="send('test fan 200')">Fan On</button>
-        <button onclick="send('test fan 0')">Fan Off</button>
-        <button onclick="send('test motor')">Test Motor</button>
-        <button onclick="send('turn')">Turn Eggs</button>
-      </div>
-      <div class="custom-cmd">
-        <label>Max safety temp</label>
-        <input type="range" id="maxtemp-range" min="35" max="50" step="0.5" value="40" oninput="updateMaxTempLabel(this.value)" />
-        <span id="maxtemp-val">40°C</span>
-        <button onclick="sendMaxTemp()">Set</button>
-      </div>
-      <div class="custom-cmd">
-        <label>Turn degrees</label>
-        <input type="number" id="turn-deg" min="15" max="360" step="15" value="90" oninput="updateTurnStepsLabel()" />
-        <span id="turn-steps">(~800 steps)</span>
-        <button onclick="sendTurnDeg()">Set</button>
-      </div>
-      <div class="custom-cmd">
-        <label>Turn RPM</label>
-        <input type="number" id="turn-rpm" min="0.5" max="10" step="0.5" value="2" />
-        <button onclick="sendTurnRPM()">Set</button>
-      </div>
-      <div class="btn-group">
-        <button onclick="send('silence')">Silence</button>
-        <button onclick="send('reset')">Reset</button>
-      </div>
-    </section>
-
-    <section class="settings">
-      <h2>Settings</h2>
-
-      <div class="setting-row">
-        <label>Preheat max power</label>
-        <input type="range" id="preheat-range" min="0" max="255" value="60" oninput="document.getElementById('preheat-val').textContent = this.value" />
-        <span id="preheat-val">60</span>
-        <button onclick="sendPreheatMax()">Set</button>
-      </div>
-
-      <div class="setting-row">
-        <label>Trusted thermometer reads</label>
-        <input type="number" id="trusted-temp" step="0.1" placeholder="e.g. 18.0" />
-        <button onclick="sendCalTemp()">Calibrate</button>
-      </div>
-
-      <div class="setting-row pid-row">
-        <label>PID Kp</label>
-        <input type="number" id="pid-kp" step="0.01" value="84.11" />
-        <label>Ki</label>
-        <input type="number" id="pid-ki" step="0.001" value="0.618" />
-        <label>Kd</label>
-        <input type="number" id="pid-kd" step="0.01" value="2859.89" />
-        <button onclick="sendPID()">Set PID</button>
-      </div>
-
-      <div class="setting-row">
-        <label>Target temp</label>
-        <input type="number" id="target-temp" min="30" max="50" step="0.1" value="37.5" />
-        <button onclick="sendTargetTemp()">Set</button>
-      </div>
-
-      <div class="setting-row">
-        <label>Humidity range</label>
-        <input type="number" id="humid-lo" min="20" max="90" step="1" value="45" />
-        <span>–</span>
-        <input type="number" id="humid-hi" min="20" max="90" step="1" value="55" />
-        <button onclick="sendHumidityRange()">Set</button>
-      </div>
-    </section>
-
-    <section class="calibration">
-      <h2>🌡️ Thermistor Calibration</h2>
-      <div class="cal-row">
-        <div class="cal-live">
-          <div class="label">Live ADC</div>
-          <div class="value" id="cal-adc">--</div>
+    <main class="main">
+      <!-- DASHBOARD -->
+      <section id="tab-dashboard" class="tab-panel active">
+        <div class="metrics">
+          <div class="metric">
+            <div class="label">Temperature</div>
+            <div class="value" id="val-temp">--</div>
+            <div class="unit">°C</div>
+          </div>
+          <div class="metric">
+            <div class="label">Humidity</div>
+            <div class="value" id="val-humidity">--</div>
+            <div class="unit">%</div>
+          </div>
+          <div class="metric">
+            <div class="label">Heater</div>
+            <div class="value" id="val-heater">--</div>
+            <div class="unit">%</div>
+          </div>
+          <div class="metric">
+            <div class="label">Fan</div>
+            <div class="value" id="val-fan">--</div>
+            <div class="unit">%</div>
+          </div>
+          <div class="metric wide">
+            <div class="label">State</div>
+            <div class="value" id="val-state">--</div>
+            <div class="sub" id="val-state-reason"></div>
+          </div>
+          <div class="metric wide">
+            <div class="label">Day</div>
+            <div class="value" id="val-day">--</div>
+          </div>
         </div>
-        <div class="cal-live">
-          <div class="label">Firmware Temp</div>
-          <div class="value" id="cal-firmware-temp">--</div>
+
+        <div class="alarms-card">
+          <h3>Alarms</h3>
+          <div class="leds">
+            <div class="led" id="led-sensorFail"><span class="dot"></span>Sensor Fail</div>
+            <div class="led" id="led-overTemp"><span class="dot"></span>Over Temp</div>
+            <div class="led" id="led-underTemp"><span class="dot"></span>Under Temp</div>
+            <div class="led" id="led-dhtFail"><span class="dot"></span>DHT Fail</div>
+            <div class="led" id="led-humidHigh"><span class="dot"></span>Humid High</div>
+            <div class="led" id="led-humidLow"><span class="dot"></span>Humid Low</div>
+            <div class="led" id="led-errorState"><span class="dot"></span>Error State</div>
+          </div>
+          <div class="alarm-actions">
+            <button id="btn-override" class="btn btn-warn toggle" onclick="toggleOverride()">Override Errors</button>
+            <button class="btn" onclick="send('silence')">Silence Alarm</button>
+          </div>
         </div>
-        <div class="cal-live">
-          <div class="label">Target Temp</div>
-          <div class="value" id="cal-target-temp">--</div>
+
+        <div class="chart-card">
+          <h3>Temperature History</h3>
+          <div class="chart-wrap"><canvas id="tempChart"></canvas></div>
         </div>
-      </div>
-      <div class="cal-inputs">
-        <label>Trusted thermometer reads</label>
-        <input type="number" id="cal-actual" min="10" max="60" step="0.1" placeholder="e.g. 37.6" />
-        <button onclick="addCalPoint()">Add Point</button>
-      </div>
-      <div class="cal-inputs">
-        <label>Target ADC</label>
-        <input type="number" id="target-adc" min="1" max="1022" step="1" placeholder="e.g. 600" />
-        <button onclick="sendAdcTarget()">Set ADC Target</button>
-        <button onclick="send('set adc off')">Temp Mode</button>
-        <button onclick="send('cal table')">Refresh Table</button>
-        <button onclick="send('cal generate')">Generate Code</button>
-        <button onclick="send('cal clear points')">Clear Points</button>
-      </div>
-      <table class="cal-table" id="cal-table">
-        <thead>
-          <tr><th>#</th><th>ADC</th><th>Actual Temp (°C)</th></tr>
-        </thead>
-        <tbody id="cal-tbody">
-          <tr class="empty"><td colspan="3">No calibration points yet.</td></tr>
-        </tbody>
-      </table>
-      <pre class="code-block" id="cal-code"></pre>
-    </section>
+      </section>
 
-    <section class="controls">
-      <div class="custom-cmd">
-        <input type="text" id="cmd-input" placeholder="Type command..." />
-        <button onclick="sendInput()">Send</button>
-      </div>
-    </section>
+      <!-- INCUBATION -->
+      <section id="tab-incubation" class="tab-panel">
+        <div class="panel-card">
+          <h3>Select Species</h3>
+          <div class="species-grid">
+            <button class="species-btn" onclick="send('select chicken')">🐔 Chicken<br><small>21 days</small></button>
+            <button class="species-btn" onclick="send('select pigeon')">🕊️ Pigeon<br><small>18 days</small></button>
+            <button class="species-btn" onclick="send('select quail')">🐦 Quail<br><small>18 days</small></button>
+            <button class="species-btn" onclick="send('select duck')">🦆 Duck<br><small>28 days</small></button>
+            <button class="species-btn" onclick="send('select turkey')">🦃 Turkey<br><small>28 days</small></button>
+            <button class="species-btn" onclick="send('select goose')">🪿 Goose<br><small>30 days</small></button>
+            <button class="species-btn" onclick="send('select guinea')">🐓 Guinea<br><small>28 days</small></button>
+            <button class="species-btn" onclick="send('select custom')">⚙️ Custom</button>
+          </div>
+        </div>
 
-    <section class="chart-section">
-      <h2>Temperature History</h2>
-      <div class="chart-wrap">
-        <canvas id="tempChart"></canvas>
-      </div>
-    </section>
+        <div class="panel-card">
+          <h3>Custom Species</h3>
+          <p class="hint">Only active when Custom is selected</p>
+          <div class="form-row">
+            <label>Total days</label>
+            <input type="number" id="custom-days" min="1" max="60" value="21" onchange="send('custom days ' + this.value)" />
+          </div>
+          <div class="form-row">
+            <label>Lockdown day</label>
+            <input type="number" id="custom-stop" min="1" max="60" value="18" onchange="send('custom stop ' + this.value)" />
+          </div>
+          <div class="form-row">
+            <label>Temp setpoint (°C)</label>
+            <input type="number" id="custom-temp" min="30" max="42" step="0.1" value="37.5" onchange="send('custom temp ' + this.value)" />
+          </div>
+          <div class="form-row">
+            <label>Setter humidity low</label>
+            <input type="number" id="custom-humid-lo" min="20" max="90" value="45" onchange="updateCustomHumid()" />
+          </div>
+          <div class="form-row">
+            <label>Setter humidity high</label>
+            <input type="number" id="custom-humid-hi" min="20" max="90" value="55" onchange="updateCustomHumid()" />
+          </div>
+          <div class="form-row">
+            <label>Lockdown humidity low</label>
+            <input type="number" id="custom-lock-lo" min="20" max="90" value="65" onchange="updateCustomLock()" />
+          </div>
+          <div class="form-row">
+            <label>Lockdown humidity high</label>
+            <input type="number" id="custom-lock-hi" min="20" max="90" value="70" onchange="updateCustomLock()" />
+          </div>
+          <div class="form-row">
+            <label>Turns per day</label>
+            <input type="number" id="custom-turns" min="1" max="24" value="5" onchange="send('custom turns ' + this.value)" />
+          </div>
+        </div>
 
-    <section class="terminal">
-      <h2>Serial Log</h2>
-      <pre id="log"></pre>
-    </section>
+        <div class="panel-card">
+          <h3>Quick Commands</h3>
+          <div class="btn-grid">
+            <button class="btn" onclick="send('status')">Status</button>
+            <button class="btn" onclick="send('turn')">Turn Eggs Now</button>
+            <button class="btn" onclick="send('autotune')">🔄 Autotune PID</button>
+            <button class="btn" onclick="send('test motor')">Test Motor</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section id="tab-settings" class="tab-panel">
+        <div class="settings-grid">
+          <div class="setting-card">
+            <h4>Temperature</h4>
+            <div class="form-row">
+              <label>Target temp (°C)</label>
+              <input type="number" id="target-temp" min="30" max="50" step="0.1" value="37.5" />
+              <button class="btn" onclick="sendTargetTemp()">Set</button>
+            </div>
+            <div class="form-row">
+              <label>Safety max temp (°C)</label>
+              <input type="range" id="maxtemp-range" min="35" max="50" step="0.5" value="40" oninput="document.getElementById('maxtemp-val').textContent = parseFloat(this.value).toFixed(1) + '°C'" />
+              <span id="maxtemp-val">40.0°C</span>
+              <button class="btn" onclick="sendMaxTemp()">Set</button>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <h4>ADC Target Mode</h4>
+            <p class="hint">Use for precise calibration. Heater targets a raw ADC value instead of temperature.</p>
+            <div class="form-row">
+              <label>Target ADC</label>
+              <input type="number" id="target-adc" min="1" max="1022" step="1" placeholder="e.g. 600" />
+              <button class="btn btn-primary" onclick="sendAdcTarget()">Set ADC Target</button>
+              <button class="btn btn-secondary" onclick="send('set adc off')">Back to Temp Mode</button>
+            </div>
+            <div class="form-row">
+              <span id="adc-mode-badge" class="badge">Temp Mode</span>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <h4>Humidity</h4>
+            <div class="form-row">
+              <label>Range (%)</label>
+              <input type="number" id="humid-lo" min="20" max="90" step="1" value="45" />
+              <span>–</span>
+              <input type="number" id="humid-hi" min="20" max="90" step="1" value="55" />
+              <button class="btn" onclick="sendHumidityRange()">Set</button>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <h4>Fan</h4>
+            <div class="form-row">
+              <label>Speed range (0–255)</label>
+              <input type="number" id="fan-min" min="0" max="255" value="40" />
+              <span>–</span>
+              <input type="number" id="fan-max" min="0" max="255" value="255" />
+              <button class="btn" onclick="sendFanRange()">Set</button>
+            </div>
+            <div class="form-row">
+              <button class="btn" onclick="send('test fan 0')">Fan Off</button>
+              <button class="btn" onclick="send('test fan 200')">Fan On (200)</button>
+              <button class="btn" onclick="send('test fan -1')">Fan Auto</button>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <h4>Egg Turner</h4>
+            <div class="form-row">
+              <label>Degrees per turn</label>
+              <input type="number" id="turn-deg" min="15" max="360" step="15" value="90" oninput="updateTurnStepsLabel()" />
+              <span id="turn-steps">(~800 steps)</span>
+              <button class="btn" onclick="sendTurnDeg()">Set</button>
+            </div>
+            <div class="form-row">
+              <label>Turn RPM</label>
+              <input type="number" id="turn-rpm" min="0.5" max="10" step="0.5" value="2" />
+              <button class="btn" onclick="sendTurnRPM()">Set</button>
+            </div>
+            <div class="form-row">
+              <label>Turns per day</label>
+              <input type="number" id="turns-per-day" min="1" max="24" value="5" />
+              <button class="btn" onclick="sendTurnsPerDay()">Set</button>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <h4>PID Tuning</h4>
+            <div class="form-row pid-row">
+              <label>Kp</label>
+              <input type="number" id="pid-kp" step="0.01" value="84.11" />
+              <label>Ki</label>
+              <input type="number" id="pid-ki" step="0.001" value="0.618" />
+              <label>Kd</label>
+              <input type="number" id="pid-kd" step="0.01" value="2859.89" />
+              <button class="btn" onclick="sendPID()">Set PID</button>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <h4>Preheat & Calibration</h4>
+            <div class="form-row">
+              <label>Preheat max PWM</label>
+              <input type="range" id="preheat-range" min="0" max="255" value="60" oninput="document.getElementById('preheat-val').textContent = this.value" />
+              <span id="preheat-val">60</span>
+              <button class="btn" onclick="sendPreheatMax()">Set</button>
+            </div>
+            <div class="form-row">
+              <label>Trusted thermometer reads</label>
+              <input type="number" id="trusted-temp" step="0.1" placeholder="e.g. 18.0" />
+              <button class="btn" onclick="sendCalTemp()">Calibrate Offset</button>
+              <button class="btn btn-secondary" onclick="send('cal reset')">Reset Cal</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CALIBRATION -->
+      <section id="tab-calibration" class="tab-panel">
+        <div class="cal-header">
+          <div class="cal-live-card">
+            <div class="label">Live ADC</div>
+            <div class="value" id="cal-adc">--</div>
+          </div>
+          <div class="cal-live-card">
+            <div class="label">Firmware Temp</div>
+            <div class="value" id="cal-firmware-temp">--</div>
+          </div>
+          <div class="cal-live-card">
+            <div class="label">Current Target</div>
+            <div class="value" id="cal-target">--</div>
+          </div>
+          <div class="cal-live-card">
+            <div class="label">Mode</div>
+            <div class="value" id="cal-mode">--</div>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <h3>Target Control</h3>
+          <div class="form-row">
+            <label>Set target temp (°C)</label>
+            <input type="number" id="cal-target-temp-input" min="30" max="50" step="0.1" value="37.5" />
+            <button class="btn" onclick="send('set temp ' + document.getElementById('cal-target-temp-input').value)">Set Temp</button>
+          </div>
+          <div class="form-row">
+            <label>Or set target ADC</label>
+            <input type="number" id="cal-target-adc-input" min="1" max="1022" step="1" placeholder="e.g. 600" />
+            <button class="btn btn-primary" onclick="send('set adc ' + document.getElementById('cal-target-adc-input').value)">Set ADC</button>
+            <button class="btn btn-secondary" onclick="send('set adc off')">Temp Mode</button>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <h3>Record Calibration Point</h3>
+          <div class="form-row">
+            <label>Trusted thermometer reads (°C)</label>
+            <input type="number" id="cal-actual" min="10" max="60" step="0.1" placeholder="e.g. 37.6" />
+            <button class="btn btn-success" onclick="addCalPoint()">Add Point</button>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <div class="table-header">
+            <h3>Calibration Points</h3>
+            <div>
+              <button class="btn" onclick="send('cal table')">Refresh Table</button>
+              <button class="btn" onclick="send('cal generate')">Generate Code</button>
+              <button class="btn btn-danger" onclick="send('cal clear points')">Clear Points</button>
+            </div>
+          </div>
+          <table class="cal-table" id="cal-table">
+            <thead><tr><th>#</th><th>ADC</th><th>Actual Temp (°C)</th></tr></thead>
+            <tbody id="cal-tbody"><tr class="empty"><td colspan="3">No calibration points yet.</td></tr></tbody>
+          </table>
+          <pre class="code-block" id="cal-code"></pre>
+        </div>
+      </section>
+
+      <!-- TERMINAL -->
+      <section id="tab-terminal" class="tab-panel">
+        <div class="terminal-card">
+          <div class="terminal-header">
+            <h3>Serial Log</h3>
+            <div class="terminal-input-row">
+              <input type="text" id="cmd-input" placeholder="Type raw command and press Enter..." />
+              <button class="btn" onclick="sendInput()">Send</button>
+            </div>
+          </div>
+          <pre id="log"></pre>
+        </div>
+      </section>
+    </main>
   </div>
-
-  <script src="app.js?v=3"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>

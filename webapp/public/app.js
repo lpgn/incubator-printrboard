@@ -25,16 +25,25 @@ const ledMap = {
 let overrideActive = false;
 let lastErrorReason = '';
 let tempChart = null;
-
 let ws;
 let reconnectTimer;
 
+// --- Tabs ---
+function showTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  const panel = document.getElementById('tab-' + name);
+  const btn = document.querySelector('.tab-btn[data-tab="' + name + '"]');
+  if (panel) panel.classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+
+// --- WebSocket ---
 function connect() {
   const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   ws = new WebSocket(`${proto}//${window.location.host}`);
 
   ws.onopen = () => {
-    console.log('WS connected');
     clearTimeout(reconnectTimer);
   };
 
@@ -50,7 +59,6 @@ function connect() {
       if (!tempChart) initChart();
       appendHistory(data.history);
     } else if (data.type === 'caltable') {
-      console.log('WS caltable:', data);
       updateCalTable(data.points);
     } else if (data.type === 'log') {
       appendLog(data.line);
@@ -77,9 +85,15 @@ function updateStatus(s) {
   if (s.humidity !== null && s.humidity !== undefined) els.humidity.textContent = s.humidity;
   if (s.heater !== null && s.heater !== undefined) els.heater.textContent = s.heater;
   if (s.fan !== null && s.fan !== undefined) els.fan.textContent = s.fan;
+
   if (s.state) {
     els.state.textContent = s.state;
     els.state.style.color = stateColor(s.state);
+    const headerState = document.getElementById('header-state');
+    if (headerState) {
+      headerState.textContent = s.state;
+      headerState.style.color = stateColor(s.state);
+    }
     if (s.state === 'ERROR') {
       els.stateReason.textContent = lastErrorReason || 'Unknown error';
     } else {
@@ -87,15 +101,19 @@ function updateStatus(s) {
       lastErrorReason = '';
     }
   }
+
   if (s.day !== null && s.totalDays !== null && s.totalDays !== undefined) {
     els.day.textContent = `${s.day} / ${s.totalDays}`;
+    const headerDay = document.getElementById('header-day');
+    if (headerDay) headerDay.textContent = `Day ${s.day} / ${s.totalDays}`;
   } else if (s.state === 'IDLE') {
     els.day.textContent = '-';
+    const headerDay = document.getElementById('header-day');
+    if (headerDay) headerDay.textContent = 'Day -';
   }
 
-  // Update calibration live display
+  // Calibration live display
   if (s.adc !== null && s.adc !== undefined) {
-    console.log('Status adc:', s.adc);
     const adcEl = document.getElementById('cal-adc');
     if (adcEl) adcEl.textContent = s.adc;
   }
@@ -103,12 +121,25 @@ function updateStatus(s) {
     const ftEl = document.getElementById('cal-firmware-temp');
     if (ftEl) ftEl.textContent = s.temp.toFixed(1);
   }
+
+  // Target display
+  const calTarget = document.getElementById('cal-target');
+  const calMode = document.getElementById('cal-mode');
+  const adcBadge = document.getElementById('adc-mode-badge');
   if (s.adcTarget !== null && s.adcTarget !== undefined) {
-    const ttEl = document.getElementById('cal-target-temp');
-    if (ttEl) ttEl.textContent = 'ADC=' + s.adcTarget;
+    if (calTarget) calTarget.textContent = 'ADC ' + s.adcTarget;
+    if (calMode) calMode.textContent = 'ADC Mode';
+    if (adcBadge) {
+      adcBadge.textContent = 'ADC Mode (target ' + s.adcTarget + ')';
+      adcBadge.style.color = 'var(--accent)';
+    }
   } else if (s.targetTemp !== null && s.targetTemp !== undefined) {
-    const ttEl = document.getElementById('cal-target-temp');
-    if (ttEl) ttEl.textContent = s.targetTemp.toFixed(1);
+    if (calTarget) calTarget.textContent = s.targetTemp.toFixed(1) + '°C';
+    if (calMode) calMode.textContent = 'Temp Mode';
+    if (adcBadge) {
+      adcBadge.textContent = 'Temp Mode';
+      adcBadge.style.color = 'var(--muted)';
+    }
   }
 }
 
@@ -134,83 +165,15 @@ function updateAlarms(alarms) {
 }
 
 function toggleOverride() {
-  const cmd = overrideActive ? 'override off' : 'override on';
-  send(cmd);
+  send(overrideActive ? 'override off' : 'override on');
 }
 
-function updateMaxTempLabel(val) {
-  document.getElementById('maxtemp-val').textContent = parseFloat(val).toFixed(1) + '°C';
-}
-
-function sendMaxTemp() {
-  const val = document.getElementById('maxtemp-range').value;
-  send('set maxtemp ' + val);
-}
-
-function updateTurnStepsLabel() {
-  const deg = Number(document.getElementById('turn-deg').value) || 0;
-  const steps = Math.round(deg * 3200 / 360);
-  document.getElementById('turn-steps').textContent = '(~' + steps + ' steps)';
-}
-
-function sendTurnDeg() {
-  const deg = document.getElementById('turn-deg').value;
-  send('set turn deg ' + deg);
-}
-
-function sendTurnRPM() {
-  const rpm = document.getElementById('turn-rpm').value;
-  send('set turn rpm ' + rpm);
-}
-
-function sendPreheatMax() {
-  const pwm = document.getElementById('preheat-range').value;
-  send('set preheat ' + pwm);
-}
-
-function sendCalTemp() {
-  const val = document.getElementById('trusted-temp').value;
-  if (val === '') {
-    appendLog('[ERR] Enter a temperature value');
-    return;
-  }
-  send('cal temp actual ' + val);
-}
-
-function sendPID() {
-  const kp = document.getElementById('pid-kp').value;
-  const ki = document.getElementById('pid-ki').value;
-  const kd = document.getElementById('pid-kd').value;
-  send('set pid ' + kp + ' ' + ki + ' ' + kd);
-}
-
-function sendTargetTemp() {
-  const val = document.getElementById('target-temp').value;
-  send('set temp ' + val);
-}
-
-function sendAdcTarget() {
-  const val = document.getElementById('target-adc').value;
-  if (val === '') {
-    appendLog('[ERR] Enter an ADC target value');
-    return;
-  }
-  send('set adc ' + val);
-}
-
-function sendHumidityRange() {
-  const lo = document.getElementById('humid-lo').value;
-  const hi = document.getElementById('humid-hi').value;
-  send('set humidity ' + lo + ' ' + hi);
-}
-
+// --- Chart ---
 function initChart() {
   const ctx = document.getElementById('tempChart').getContext('2d');
-
   const gradTemp = ctx.createLinearGradient(0, 0, 0, 300);
   gradTemp.addColorStop(0, 'rgba(239,68,68,0.45)');
   gradTemp.addColorStop(1, 'rgba(239,68,68,0.02)');
-
   const gradHum = ctx.createLinearGradient(0, 0, 0, 300);
   gradHum.addColorStop(0, 'rgba(56,189,248,0.35)');
   gradHum.addColorStop(1, 'rgba(56,189,248,0.02)');
@@ -311,12 +274,10 @@ function appendHistory(points) {
   const d1 = tempChart.data.datasets[1].data;
   const d2 = tempChart.data.datasets[2].data;
 
-  // Detect targetTemp from the incoming batch to backfill if needed
   let batchTarget = null;
   for (const p of points) {
     if (p.targetTemp != null) { batchTarget = p.targetTemp; break; }
   }
-  // Backfill existing null target points so the line appears across the whole graph
   if (batchTarget != null) {
     for (let i = 0; i < d2.length; i++) {
       if (d2[i] == null) d2[i] = batchTarget;
@@ -357,6 +318,7 @@ function stateColor(state) {
   }
 }
 
+// --- Log ---
 function appendLog(line) {
   const errMatch = line.match(/ERROR STATE: (.+?) !!!/);
   if (errMatch) {
@@ -376,7 +338,6 @@ function appendLog(line) {
   div.innerHTML = `<span class="time">${time}</span>${escapeHtml(line)}`;
   logEl.appendChild(div);
   logEl.scrollTop = logEl.scrollHeight;
-  // Keep log from growing forever
   while (logEl.children.length > 300) {
     logEl.removeChild(logEl.firstChild);
   }
@@ -397,13 +358,121 @@ function appendLog(line) {
   }
 }
 
-function updateCalTable(points) {
-  console.log('updateCalTable called with', points);
-  const tbody = document.getElementById('cal-tbody');
-  if (!tbody) {
-    console.warn('cal-tbody element not found');
+function escapeHtml(text) {
+  const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
+  return text.replace(/[&<>"]/g, (c) => map[c]);
+}
+
+// --- Commands ---
+function send(command) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ command }));
+  } else {
+    appendLog('[ERR] WebSocket not connected');
+  }
+}
+
+function sendInput() {
+  const val = cmdInput.value.trim();
+  if (!val) return;
+  send(val);
+  cmdInput.value = '';
+}
+
+cmdInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') sendInput();
+});
+
+// --- Settings helpers ---
+function sendTargetTemp() {
+  const val = document.getElementById('target-temp').value;
+  if (val !== '') send('set temp ' + val);
+}
+
+function sendAdcTarget() {
+  const val = document.getElementById('target-adc').value;
+  if (val === '') {
+    appendLog('[ERR] Enter an ADC target value');
     return;
   }
+  send('set adc ' + val);
+}
+
+function sendMaxTemp() {
+  const val = document.getElementById('maxtemp-range').value;
+  send('set maxtemp ' + val);
+}
+
+function sendHumidityRange() {
+  const lo = document.getElementById('humid-lo').value;
+  const hi = document.getElementById('humid-hi').value;
+  send('set humidity ' + lo + ' ' + hi);
+}
+
+function sendFanRange() {
+  const minS = document.getElementById('fan-min').value;
+  const maxS = document.getElementById('fan-max').value;
+  send('set fan ' + minS + ' ' + maxS);
+}
+
+function updateTurnStepsLabel() {
+  const deg = Number(document.getElementById('turn-deg').value) || 0;
+  const steps = Math.round(deg * 3200 / 360);
+  document.getElementById('turn-steps').textContent = '(~' + steps + ' steps)';
+}
+
+function sendTurnDeg() {
+  const deg = document.getElementById('turn-deg').value;
+  if (deg !== '') send('set turn deg ' + deg);
+}
+
+function sendTurnRPM() {
+  const rpm = document.getElementById('turn-rpm').value;
+  if (rpm !== '') send('set turn rpm ' + rpm);
+}
+
+function sendTurnsPerDay() {
+  const turns = document.getElementById('turns-per-day').value;
+  if (turns !== '') send('set turns ' + turns);
+}
+
+function sendPID() {
+  const kp = document.getElementById('pid-kp').value;
+  const ki = document.getElementById('pid-ki').value;
+  const kd = document.getElementById('pid-kd').value;
+  send('set pid ' + kp + ' ' + ki + ' ' + kd);
+}
+
+function sendPreheatMax() {
+  const pwm = document.getElementById('preheat-range').value;
+  send('set preheat ' + pwm);
+}
+
+function sendCalTemp() {
+  const val = document.getElementById('trusted-temp').value;
+  if (val === '') {
+    appendLog('[ERR] Enter a temperature value');
+    return;
+  }
+  send('cal temp actual ' + val);
+}
+
+function updateCustomHumid() {
+  const lo = document.getElementById('custom-humid-lo').value;
+  const hi = document.getElementById('custom-humid-hi').value;
+  send('custom humid ' + lo + ' ' + hi);
+}
+
+function updateCustomLock() {
+  const lo = document.getElementById('custom-lock-lo').value;
+  const hi = document.getElementById('custom-lock-hi').value;
+  send('custom lock ' + lo + ' ' + hi);
+}
+
+// --- Calibration ---
+function updateCalTable(points) {
+  const tbody = document.getElementById('cal-tbody');
+  if (!tbody) return;
   tbody.innerHTML = '';
   if (!points || points.length === 0) {
     tbody.innerHTML = '<tr class="empty"><td colspan="3">No calibration points yet.</td></tr>';
@@ -426,29 +495,5 @@ function addCalPoint() {
   send('cal point ' + val);
   document.getElementById('cal-actual').value = '';
 }
-
-function escapeHtml(text) {
-  const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
-  return text.replace(/[&<>"]/g, (c) => map[c]);
-}
-
-function send(command) {
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({ command }));
-  } else {
-    appendLog('[ERR] WebSocket not connected');
-  }
-}
-
-function sendInput() {
-  const val = cmdInput.value.trim();
-  if (!val) return;
-  send(val);
-  cmdInput.value = '';
-}
-
-cmdInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') sendInput();
-});
 
 connect();
