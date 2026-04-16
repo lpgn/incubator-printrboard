@@ -39,6 +39,13 @@ void EggTurner::setTurnsPerDay(uint8_t turns) {
     if (_turnsPerDay > 24) _turnsPerDay = 24;
 }
 
+void EggTurner::setRPM(float rpm) {
+    if (rpm < 0.5f) rpm = 0.5f;
+    if (rpm > 10.0f) rpm = 10.0f;
+    float stepsPerSec = rpm * (float)TURNER_STEPS_PER_REV / 60.0f;
+    _stepDelayUs = (uint16_t)(1000000.0f / stepsPerSec);
+}
+
 void EggTurner::update(uint32_t elapsedDaySeconds) {
     // If currently executing a turn, continue stepping even if not enabled
     if (_stepping) {
@@ -52,10 +59,10 @@ void EggTurner::update(uint32_t elapsedDaySeconds) {
             if (_stepsRemaining == 0) {
                 // Turn complete
                 _stepping = false;
+                _direction = !_direction; // Alternate direction for next turn
 
                 if (!_testTurn) {
                     _turnsCompleted++;
-                    _direction = !_direction; // Alternate direction for next turn
                 }
                 _testTurn = false;
 

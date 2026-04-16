@@ -18,6 +18,7 @@ public:
     // Configure turning parameters
     void setDegreesPerTurn(uint16_t degrees);
     void setTurnsPerDay(uint8_t turns);
+    void setRPM(float rpm);
 
     // Update — call from main loop. Handles scheduling and motion.
     // elapsedDaySeconds: seconds elapsed in the current day (0-86399)

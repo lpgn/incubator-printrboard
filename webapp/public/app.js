@@ -137,6 +137,11 @@ function sendTurnDeg() {
   send('set turn deg ' + deg);
 }
 
+function sendTurnRPM() {
+  const rpm = document.getElementById('turn-rpm').value;
+  send('set turn rpm ' + rpm);
+}
+
 function initChart() {
   const ctx = document.getElementById('tempChart').getContext('2d');
 

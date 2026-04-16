@@ -532,6 +532,16 @@ void Terminal::cmdSet(const char* args) {
         Serial.print(steps);
         Serial.println(F(" steps)"));
     }
+    else if (strncasecmp(args, "turn rpm ", 9) == 0) {
+        float rpm = atof(args + 9);
+        if (rpm < 0.5f || rpm > 10.0f) {
+            Serial.println(F("Turn RPM must be 0.5-10."));
+            return;
+        }
+        _turner->setRPM(rpm);
+        Serial.print(F(">> Turn RPM: "));
+        Serial.println(rpm, 1);
+    }
     else if (strncasecmp(args, "fan ", 4) == 0) {
         const char* p = args + 4;
         uint8_t minS = (uint8_t)atoi(p);
@@ -545,7 +555,7 @@ void Terminal::cmdSet(const char* args) {
         Serial.println(maxS);
     }
     else {
-        Serial.println(F("Usage: set temp|humidity|pid|turns|turn deg|fan <values>"));
+        Serial.println(F("Usage: set temp|humidity|pid|turns|turn deg|turn rpm|fan <values>"));
     }
 }
 
