@@ -23,6 +23,7 @@ let lastStatus = {
   heater: null,
   fan: null,
   state: null,
+  targetTemp: null,
   connected: false
 };
 
@@ -107,13 +108,15 @@ function parseStatusLine(line) {
   }
 
   if (result) {
+    result.targetTemp = lastStatus.targetTemp;
     const point = {
       t: new Date().toISOString(),
       temp: result.temp,
       humidity: result.humidity,
       heater: result.heater,
       fan: result.fan,
-      state: result.state
+      state: result.state,
+      targetTemp: lastStatus.targetTemp
     };
     history.push(point);
     if (history.length > MAX_HISTORY) history.shift();
@@ -163,6 +166,11 @@ function openSerial() {
         broadcast({ type: 'alarms', alarms: { ...lastAlarms } });
       }
 
+      const targetMatch = raw.match(/target:\s*([\d.]+)C/i);
+      if (targetMatch) {
+        lastStatus.targetTemp = parseFloat(targetMatch[1]);
+      }
+
       const status = parseStatusLine(raw);
       if (status) {
         Object.assign(lastStatus, status);
@@ -207,6 +215,15 @@ wss.on('connection', (ws) => {
     }
 
     if (!cmd) return;
+
+    if (cmd.toLowerCase().startsWith('set temp ')) {
+      const parts = cmd.split(' ');
+      if (parts.length >= 3) lastStatus.targetTemp = parseFloat(parts[2]);
+    }
+    if (cmd.toLowerCase().startsWith('select ')) {
+      // All presets default to 37.5C; custom may differ but we don't know here
+      lastStatus.targetTemp = 37.5;
+    }
 
     console.log('WS command:', cmd);
     if (port && port.isOpen) {

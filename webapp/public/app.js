@@ -216,6 +216,18 @@ function initChart() {
           pointRadius: 0,
           pointHoverRadius: 5,
           yAxisID: 'y1'
+        },
+        {
+          label: 'Target Temp (°C)',
+          data: [],
+          borderColor: '#f59e0b',
+          borderWidth: 2,
+          borderDash: [6, 6],
+          fill: false,
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          yAxisID: 'y',
+          tension: 0
         }
       ]
     },
@@ -267,6 +279,7 @@ function appendHistory(points) {
   const labels = tempChart.data.labels;
   const d0 = tempChart.data.datasets[0].data;
   const d1 = tempChart.data.datasets[1].data;
+  const d2 = tempChart.data.datasets[2].data;
 
   for (const p of points) {
     const t = new Date(p.t);
@@ -274,6 +287,7 @@ function appendHistory(points) {
     labels.push(label);
     d0.push(p.temp);
     d1.push(p.humidity);
+    d2.push(p.targetTemp != null ? p.targetTemp : null);
   }
 
   const max = 400;
@@ -282,6 +296,7 @@ function appendHistory(points) {
     labels.splice(0, drop);
     d0.splice(0, drop);
     d1.splice(0, drop);
+    d2.splice(0, drop);
   }
 
   tempChart.update('none');
