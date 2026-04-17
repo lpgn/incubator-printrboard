@@ -135,6 +135,10 @@ void EggTurner::resetDayCount() {
     _turnsCompleted = 0;
 }
 
+void EggTurner::setTurnsCompleted(uint8_t turns) {
+    _turnsCompleted = turns;
+}
+
 uint32_t EggTurner::getSecondsUntilNextTurn(uint32_t elapsedDaySeconds) const {
     if (!_enabled || _turnsCompleted >= _turnsPerDay) return 0;
     uint32_t interval = getTurnInterval();

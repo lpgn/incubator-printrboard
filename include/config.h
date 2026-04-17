@@ -92,7 +92,7 @@
 #define PID_WINDUP_LIMIT    100.0f     // Anti-windup integral limit
 
 // Autotune
-#define AUTOTUNE_CYCLES     8          // Number of oscillation cycles to measure
+#define AUTOTUNE_CYCLES     4          // Number of oscillation cycles to measure
 #define AUTOTUNE_HYSTERESIS 0.5f       // °C band around setpoint for relay
 
 // =============================================================================
@@ -146,7 +146,7 @@
 // =============================================================================
 
 #define EEPROM_MAGIC_BYTE      0xA5
-#define EEPROM_SAVE_INTERVAL_MS 600000UL  // Save state every 10 minutes
+#define EEPROM_SAVE_INTERVAL_MS 1800000UL  // Save state every 30 minutes
 
 // EEPROM addresses
 #define EEPROM_ADDR_MAGIC      0x00

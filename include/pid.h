@@ -83,6 +83,7 @@ private:
     float _atPeriodSum;
     float _atAmplitudeSum;
     uint8_t _atCompletedCycles;
+    unsigned long _atLastLogTime;
 };
 
 #endif // PID_H

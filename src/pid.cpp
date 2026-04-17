@@ -78,6 +78,7 @@ void PIDController::autotuneStart(float setpoint) {
     _atCycleCount = 0;
     _atTargetCycles = AUTOTUNE_CYCLES;
     _atLastToggle = millis();
+    _atLastLogTime = millis();
     _atMaxTemp = 0.0f;
     _atMinTemp = 999.0f;
     _atPeriodSum = 0.0f;
@@ -118,10 +119,16 @@ bool PIDController::autotuneUpdate(float currentTemp) {
             // Was heating, now cooling
             _atOutput = _outMin;
             _atHeating = false;
+            Serial.print(F("[AUTOTUNE] >> Switched to COOLING at "));
+            Serial.print(currentTemp, 1);
+            Serial.println(F("C"));
         } else {
             // Was cooling, now heating — completes one full cycle
             _atOutput = _outMax;
             _atHeating = true;
+            Serial.print(F("[AUTOTUNE] >> Switched to HEATING at "));
+            Serial.print(currentTemp, 1);
+            Serial.println(F("C"));
 
             if (_atCycleCount > 0) {
                 // Record this cycle's data (skip first cycle as it warms from cold)
@@ -143,6 +150,22 @@ bool PIDController::autotuneUpdate(float currentTemp) {
                 Serial.print(_atMaxTemp, 1);
                 Serial.print(F("  Min: "));
                 Serial.println(_atMinTemp, 1);
+
+                // Print running estimates so user can abort gracefully
+                float avgAmplitude = _atAmplitudeSum / (float)_atCompletedCycles;
+                float avgPeriod = _atPeriodSum / (float)_atCompletedCycles / 1000.0f;
+                float Ku = (4.0f * (float)(_outMax - _outMin)) / (3.14159f * (2.0f * avgAmplitude));
+                float Tu = avgPeriod;
+                float newKp = 0.6f * Ku;
+                float newKi = 1.2f * Ku / Tu;
+                float newKd = 0.075f * Ku * Tu;
+
+                Serial.print(F("[AUTOTUNE] Intermediate PID Projection -> Kp: "));
+                Serial.print(newKp, 2);
+                Serial.print(F(" | Ki: "));
+                Serial.print(newKi, 3);
+                Serial.print(F(" | Kd: "));
+                Serial.println(newKd, 2);
             }
 
             _atCycleCount++;
@@ -189,6 +212,24 @@ bool PIDController::autotuneUpdate(float currentTemp) {
                 return true; // autotune complete
             }
         }
+    }
+
+    unsigned long nowMillis = millis();
+    if (nowMillis - _atLastLogTime >= 5000) {
+        _atLastLogTime = nowMillis;
+        Serial.print(F("[AUTOTUNE] "));
+        if (_atHeating) {
+            Serial.print(F("HEATING -> Waiting to cross "));
+            Serial.print(_atSetpoint + _atHysteresis, 1);
+        } else {
+            Serial.print(F("COOLING -> Waiting to cross "));
+            Serial.print(_atSetpoint - _atHysteresis, 1);
+        }
+        Serial.print(F("C | Current: "));
+        Serial.print(currentTemp, 1);
+        Serial.print(F("C | Highwater: "));
+        Serial.print(_atMaxTemp, 1);
+        Serial.println(F("C"));
     }
 
     return false; // still running

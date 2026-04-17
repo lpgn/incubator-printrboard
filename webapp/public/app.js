@@ -81,7 +81,9 @@ function updateConnection(connected) {
 }
 
 function updateStatus(s) {
-  if (s.temp !== null && s.temp !== undefined) els.temp.textContent = s.temp.toFixed(1);
+  if (s.temp !== null && s.temp !== undefined) {
+    els.temp.textContent = (s.temp === -999.0) ? 'ERR' : s.temp.toFixed(1);
+  }
   if (s.humidity !== null && s.humidity !== undefined) els.humidity.textContent = s.humidity;
   if (s.heater !== null && s.heater !== undefined) els.heater.textContent = s.heater;
   if (s.fan !== null && s.fan !== undefined) els.fan.textContent = s.fan;
@@ -293,7 +295,7 @@ function appendHistory(points) {
     d2.push(p.targetTemp != null ? p.targetTemp : null);
   }
 
-  const max = 400;
+  const max = 2880;
   if (labels.length > max) {
     const drop = labels.length - max;
     labels.splice(0, drop);
@@ -314,6 +316,7 @@ function stateColor(state) {
     case 'HATCHING': return '#a78bfa';
     case 'DONE': return '#22c55e';
     case 'ERROR': return '#ef4444';
+    case 'AUTOTUNE': return '#eab308';
     default: return '#e2e8f0';
   }
 }

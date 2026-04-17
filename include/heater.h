@@ -5,7 +5,7 @@
 #include "config.h"
 
 // Set to 1 and paste your hardcoded table in heater.cpp to use a compile-time table
-#define USE_HARDCODED_CAL_TABLE 0
+#define USE_HARDCODED_CAL_TABLE 1
 
 struct CalibrationPoint {
     uint16_t adc;

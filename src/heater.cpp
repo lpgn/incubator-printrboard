@@ -282,8 +282,10 @@ void Heater::generateTableCode() {
 
 #if USE_HARDCODED_CAL_TABLE
 // Paste your generated table here after running `cal generate`
-static const uint8_t hardcodedCalCount = 0;
+static const uint8_t hardcodedCalCount = 3;
 static const CalibrationPoint PROGMEM hardcodedCalTable[] = {
-    // {adc, actualTemp},
+    {944, 37.0f},
+    {948, 37.3f},
+    {952, 37.5f}
 };
 #endif

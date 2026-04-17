@@ -163,11 +163,29 @@ void setup() {
         stateMachine.setPreviousState((IncubatorState)saved.state);
 
         // Pre-load the clock with saved elapsed time
-        incubationClock.resumeFrom(saved.elapsedSeconds);
+        uint32_t resumedElapsed = saved.elapsedSeconds;
+
+        // RTC catch-up: account for blackout time
+        if (rtc.isPresent() && saved.epoch > 0) {
+            uint32_t currentEpoch = rtc.getEpoch2000();
+            if (currentEpoch > saved.epoch) {
+                uint32_t blackoutSeconds = currentEpoch - saved.epoch;
+                // Sanity check: don't add more than 30 days
+                if (blackoutSeconds < SECONDS_PER_DAY * 30UL) {
+                    resumedElapsed += blackoutSeconds;
+                    Serial.print(F("  Blackout recovered: "));
+                    Serial.print(blackoutSeconds / 3600);
+                    Serial.println(F(" hours"));
+                }
+            }
+        }
+
+        incubationClock.resumeFrom(resumedElapsed);
         incubationClock.pause(); // Don't start counting yet until user says 'resume'
 
         // Restore turner state
         turner.setTurnsPerDay(stateMachine.getActivePreset().turnsPerDay);
+        turner.setTurnsCompleted(saved.turnsToday);
 
         // Go to paused state waiting for user to resume
         // We manually set the state since normal transitions require specific source states
@@ -252,7 +270,8 @@ void loop() {
                         turner.getTurnsCompleted(),
                         pid.getKp(), pid.getKi(), pid.getKd(),
                         (uint16_t)(stateMachine.getTargetTemp() * 10.0f),
-                        (uint16_t)(stateMachine.getHumidityMidpoint() * 10.0f)
+                        (uint16_t)(stateMachine.getHumidityMidpoint() * 10.0f),
+                        rtc.isPresent() ? rtc.getEpoch2000() : 0
                     );
                 }
             } else if (currentTemp > safety.getMaxTemp() && !stateMachine.isAdcTargetMode()) {
@@ -269,8 +288,11 @@ void loop() {
                     pid.setSetpoint(stateMachine.getTargetTemp());
                     output = pid.compute(currentTemp);
                 }
-                // Clamp preheat output to avoid massive overshoot
-                if (state == STATE_PREHEATING && output > stateMachine.getPreheatMax()) {
+                // Clamp output during large temperature deviations to prevent scorching
+                // (e.g., when door is opened and cold air causes PID to spike)
+                float tempError = stateMachine.getTargetTemp() - currentTemp;
+                if (tempError < 0.0f) tempError = -tempError;
+                if (tempError > 2.0f && output > stateMachine.getPreheatMax()) {
                     output = stateMachine.getPreheatMax();
                 }
                 heater.setOutput((uint8_t)output);
@@ -298,8 +320,8 @@ void loop() {
             float humidMid = stateMachine.getHumidityMidpoint();
             float humidError = humidMid - currentHumidity;
             fan.update(tempError, humidError);
-        } else if (state == STATE_PREHEATING) {
-            fan.setManualSpeed(0); // Keep exhaust fan off while heating up
+        } else if (state == STATE_PREHEATING || state == STATE_IDLE || state == STATE_DONE) {
+            fan.setManualSpeed(0); // Keep exhaust fan off while heating up or inactive
         }
     }
 
@@ -373,6 +395,7 @@ void loop() {
             stateMachine.recoverFromError();
             storage.logEvent(EVENT_RESUME, incubationClock.getCurrentDay());
             if (stateMachine.isHeatingAllowed()) {
+                heater.clearShutdown();
                 fan.setManualSpeed(-1); // Return to auto
             }
         }
@@ -412,8 +435,11 @@ void loop() {
     if (now - lastEEPROMSave >= EEPROM_SAVE_INTERVAL_MS) {
         lastEEPROMSave = now;
 
-        if (state == STATE_INCUBATING || state == STATE_LOCKDOWN ||
-            state == STATE_HATCHING || state == STATE_PAUSED) {
+        // Never save AUTOTUNE state — prevents half-tuned recovery on brownout
+        if (state == STATE_AUTOTUNE) {
+            // Skip save during autotune
+        } else if (state == STATE_INCUBATING || state == STATE_LOCKDOWN ||
+                   state == STATE_HATCHING || state == STATE_PAUSED) {
 
             storage.save(
                 (uint8_t)stateMachine.getSpeciesID(),
@@ -423,7 +449,8 @@ void loop() {
                 turner.getTurnsCompleted(),
                 pid.getKp(), pid.getKi(), pid.getKd(),
                 (uint16_t)(stateMachine.getTargetTemp() * 10.0f),
-                (uint16_t)(stateMachine.getHumidityMidpoint() * 10.0f)
+                (uint16_t)(stateMachine.getHumidityMidpoint() * 10.0f),
+                rtc.isPresent() ? rtc.getEpoch2000() : 0
             );
 
             // Also snapshot state to SD card

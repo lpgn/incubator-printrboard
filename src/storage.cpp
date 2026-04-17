@@ -7,7 +7,8 @@ Storage::Storage() {}
 void Storage::save(uint8_t speciesID, uint8_t state, uint32_t elapsedSeconds,
                    uint16_t currentDay, uint8_t turnsToday,
                    float kp, float ki, float kd,
-                   uint16_t targetTemp, uint16_t humidity) {
+                   uint16_t targetTemp, uint16_t humidity,
+                   uint32_t epoch) {
 
     SavedState s;
     s.magic = EEPROM_MAGIC_BYTE;
@@ -16,6 +17,7 @@ void Storage::save(uint8_t speciesID, uint8_t state, uint32_t elapsedSeconds,
     s.elapsedSeconds = elapsedSeconds;
     s.currentDay = currentDay;
     s.turnsToday = turnsToday;
+    s.epoch = epoch;
     s.pidKp = kp;
     s.pidKi = ki;
     s.pidKd = kd;
@@ -27,6 +29,7 @@ void Storage::save(uint8_t speciesID, uint8_t state, uint32_t elapsedSeconds,
     EEPROM.update(EEPROM_ADDR_MAGIC, s.magic);
     EEPROM.update(EEPROM_ADDR_SPECIES, s.speciesID);
     EEPROM.update(EEPROM_ADDR_STATE, s.state);
+    writeUint32(EEPROM_ADDR_START_TIME, s.epoch);
     writeUint32(EEPROM_ADDR_ELAPSED, s.elapsedSeconds);
     writeUint16(EEPROM_ADDR_DAY, s.currentDay);
     EEPROM.update(EEPROM_ADDR_TURNS, s.turnsToday);
@@ -44,6 +47,7 @@ bool Storage::load(SavedState& outState) {
 
     outState.speciesID = EEPROM.read(EEPROM_ADDR_SPECIES);
     outState.state = EEPROM.read(EEPROM_ADDR_STATE);
+    outState.epoch = readUint32(EEPROM_ADDR_START_TIME);
     outState.elapsedSeconds = readUint32(EEPROM_ADDR_ELAPSED);
     outState.currentDay = readUint16(EEPROM_ADDR_DAY);
     outState.turnsToday = EEPROM.read(EEPROM_ADDR_TURNS);
@@ -149,6 +153,10 @@ uint8_t Storage::calcChecksum(const SavedState& s) {
     cs ^= (uint8_t)((s.elapsedSeconds >> 8) & 0xFF);
     cs ^= (uint8_t)(s.currentDay & 0xFF);
     cs ^= s.turnsToday;
+    cs ^= (uint8_t)(s.epoch & 0xFF);
+    cs ^= (uint8_t)((s.epoch >> 8) & 0xFF);
+    cs ^= (uint8_t)((s.epoch >> 16) & 0xFF);
+    cs ^= (uint8_t)((s.epoch >> 24) & 0xFF);
     // XOR the float bytes
     const uint8_t* fp;
     fp = (const uint8_t*)&s.pidKp;

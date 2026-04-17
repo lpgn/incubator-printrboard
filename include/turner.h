@@ -43,6 +43,9 @@ public:
     // Reset turn counter (called at start of new day)
     void resetDayCount();
 
+    // Set turn counter (for power recovery sync)
+    void setTurnsCompleted(uint8_t turns);
+
     // Get time until next scheduled turn (seconds)
     uint32_t getSecondsUntilNextTurn(uint32_t elapsedDaySeconds) const;
 

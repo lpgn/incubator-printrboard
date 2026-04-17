@@ -367,6 +367,7 @@ void Terminal::cmdStart() {
 
 void Terminal::cmdStop() {
     _sm->emergencyStop();
+    _pid->autotuneCancel();
     _heater->shutdown();
     _turner->setEnabled(false);
     _fan->setManualSpeed(0);
@@ -383,6 +384,8 @@ void Terminal::cmdAutotune() {
         return;
     }
 
+    _heater->clearShutdown();
+    _heater->setManualSpeed(-1);
     _sm->startAutotune();
     _pid->autotuneStart(_sm->getTargetTemp());
     Serial.println(F(">> PID Autotune started. This will take 10-20 minutes."));

@@ -15,7 +15,7 @@
 // =============================================================================
 
 FanController::FanController()
-    : _currentSpeed(FAN_BASE_SPEED), _minSpeed(FAN_MIN_SPEED),
+    : _currentSpeed(0), _minSpeed(FAN_MIN_SPEED),
       _maxSpeed(FAN_MAX_SPEED), _manualMode(false), _manualSpeed(-1) {}
 
 void FanController::begin() {

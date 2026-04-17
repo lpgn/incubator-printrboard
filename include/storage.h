@@ -18,6 +18,7 @@ struct SavedState {
     uint32_t elapsedSeconds;
     uint16_t currentDay;
     uint8_t turnsToday;
+    uint32_t epoch;           // RTC epoch at time of save
     float pidKp;
     float pidKi;
     float pidKd;
@@ -34,7 +35,8 @@ public:
     void save(uint8_t speciesID, uint8_t state, uint32_t elapsedSeconds,
               uint16_t currentDay, uint8_t turnsToday,
               float kp, float ki, float kd,
-              uint16_t targetTemp, uint16_t humidity);
+              uint16_t targetTemp, uint16_t humidity,
+              uint32_t epoch);
 
     // Load saved state from EEPROM. Returns true if valid data found.
     bool load(SavedState& outState);

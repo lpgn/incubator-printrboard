@@ -5,12 +5,13 @@ Custom firmware for the **Printrboard Rev D** (AT90USB1286) repurposed as an aut
 ## Features
 
 - 🥚 **7 bird species presets** — Chicken, Pigeon, Quail, Duck, Turkey, Goose, Guinea Fowl + Custom
-- 🌡️ **PID temperature control** with autotune (Ziegler-Nichols relay method)
+- 🌡️ **Advanced PID temperature control** with multi-point thermistor calibration, ADC target mode, and autotune
 - 💧 **Humidity monitoring** via DHT22 sensor + passive water tray evaporation
 - 🔄 **Automated egg turning** — stepper motor with configurable schedule
 - 💨 **Smart fan control** — dual-purpose temperature + humidity regulation
-- 💾 **Power recovery** — EEPROM state persistence, auto-resume after power loss
-- 🖥️ **USB terminal interface** — full control from PC or Raspberry Pi
+- ⏱️ **Real-Time Clock (RTC)** — DS3231 support for accurate timekeeping and robust power-loss recovery
+- 💾 **State Persistence** — EEPROM validates state every 10 min to guarantee safe auto-resume after outages
+- 🖥️ **Premium Glassmorphism Web Dashboard** — elegant node.js webapp for full real-time control and calibration
 - ⚠️ **Safety systems** — over-temp cutoff, sensor failure detection, alarms
 
 ## Hardware Requirements
@@ -25,7 +26,7 @@ Custom firmware for the **Printrboard Rev D** (AT90USB1286) repurposed as an aut
 | **Fan** | 12V DC fan (connects to FAN header) |
 | **Power supply** | 12V DC, sufficient for heater + motor + fan |
 | **Humidity source** | Water tray at bottom of incubator |
-| **Optional** | Status LED (EXP1 PB5), Piezo buzzer (EXP2 PD4) |
+| **Optional Modules**| DS3231 RTC Module (I2C), SD Card Module for logging (SPI), Status LED (EXP1 PB5), Piezo buzzer (EXP2 PD4) |
 
 ## Wiring
 
@@ -36,6 +37,8 @@ Custom firmware for the **Printrboard Rev D** (AT90USB1286) repurposed as an aut
 | X Stepper | Egg turning motor (NEMA 17) |
 | FAN header | 12V circulation fan |
 | EXP2 pin PD2 | DHT22 data pin (+ 4.7kΩ pull-up to 5V) |
+| I2C (PD0/PD1) | DS3231 RTC Module (SDA/SCL, optional) |
+| SPI (SD CS PB6) | SD Card Module (MOSI/MISO/SCK/CS, optional) |
 | EXP1 pin PB5 | Status LED (optional) |
 | EXP2 pin PD4 | Piezo buzzer (optional) |
 | USB | PC or Raspberry Pi |
@@ -76,7 +79,7 @@ pio device monitor
 ```
 
 ### Web Dashboard
-A simple webapp is included to monitor and control the incubator from a browser over USB.
+A **premium glassmorphism webapp** is included to natively monitor, chart, and control the incubator seamlessly from a browser over USB. It features a tabbed interface integrating all features without needing command line knowledge.
 
 ```bash
 cd webapp
@@ -96,7 +99,12 @@ set SERIAL_PORT=COM3
 npm start
 ```
 
-The dashboard shows live temperature, humidity, heater/fan levels, state, and day. It also provides buttons for common commands and a serial log viewer.
+**Key Dashboard Features:**
+- **Dashboard:** Live Temp/Humidity readouts, state alarms, and Chart.js history graphs.
+- **Incubation:** Easy preset selection or full custom species adjustments.
+- **Settings:** Fine-tune PID tuning, egg turning parameters, and hardware limits seamlessly.
+- **Calibration:** Live ADC target modes, hardware curve adjustments, and real-time multi-point thermistor calibration with C code generation for hardcoding constants.
+- **Terminal:** Built-in serial console for direct firmware communication.
 
 ## Usage
 
@@ -124,6 +132,8 @@ Available presets:
 | `start` | Begin incubation cycle |
 | `stop` | Emergency stop |
 | `autotune` | Run PID autotune (~10-20 minutes) |
+| `cal temp <C>`| Sync trusted thermometer read to apply offset |
+| `cal table` / `cal point` | View or set multi-point temperature calibration |
 | `pause` | Pause incubation |
 | `resume` | Resume incubation / power recovery |
 | `status` | Show detailed status |
