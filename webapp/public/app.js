@@ -87,8 +87,8 @@ function updateStatus(s) {
   }
   if (s.humidity !== null && s.humidity !== undefined) els.humidity.textContent = s.humidity;
   if (s.dhtTemp !== null && s.dhtTemp !== undefined) els.dhtTemp.textContent = s.dhtTemp.toFixed(1);
-  if (s.heater !== null && s.heater !== undefined) els.heater.textContent = s.heater;
-  if (s.fan !== null && s.fan !== undefined) els.fan.textContent = s.fan;
+  if (s.heater !== null && s.heater !== undefined) els.heater.textContent = s.heater > 0 ? 'ON' : 'OFF';
+  if (s.fan !== null && s.fan !== undefined) els.fan.textContent = s.fan > 0 ? 'ON' : 'OFF';
 
   if (s.state) {
     els.state.textContent = s.state;
@@ -426,12 +426,6 @@ function sendHumidityRange() {
   const lo = document.getElementById('humid-lo').value;
   const hi = document.getElementById('humid-hi').value;
   send('set humidity ' + lo + ' ' + hi);
-}
-
-function sendFanRange() {
-  const minS = document.getElementById('fan-min').value;
-  const maxS = document.getElementById('fan-max').value;
-  send('set fan ' + minS + ' ' + maxS);
 }
 
 function updateTurnStepsLabel() {

@@ -313,7 +313,10 @@ void loop() {
             heater.setOutput(0);
         }
 
-        // --- Fan control (based on temp and humidity) ---
+        // --- Heater slow PWM update (call every loop for accurate timing) ---
+        heater.update();
+
+        // --- Fan control (binary ON/OFF) ---
         // Do NOT run exhaust fan during preheat — it vents heat out
         if (state != STATE_IDLE && state != STATE_DONE && state != STATE_PREHEATING) {
             float tempError = stateMachine.getTargetTemp() - currentTemp;
@@ -321,7 +324,9 @@ void loop() {
             float humidError = humidMid - currentHumidity;
             fan.update(tempError, humidError);
         } else if (state == STATE_PREHEATING || state == STATE_IDLE || state == STATE_DONE) {
-            fan.setManualSpeed(0); // Keep exhaust fan off while heating up or inactive
+            if (!fan.isManual()) {
+                fan.setManualSpeed(0); // Keep fan off while inactive
+            }
         }
     }
 

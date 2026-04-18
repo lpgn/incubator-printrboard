@@ -60,12 +60,10 @@
           <div class="metric">
             <div class="label">Heater</div>
             <div class="value" id="val-heater">--</div>
-            <div class="unit">%</div>
           </div>
           <div class="metric">
             <div class="label">Fan</div>
             <div class="value" id="val-fan">--</div>
-            <div class="unit">%</div>
           </div>
           <div class="metric wide">
             <div class="label">State</div>
@@ -211,16 +209,9 @@
           <div class="setting-card">
             <h4>Fan</h4>
             <div class="form-row">
-              <label>Speed range (0–255)</label>
-              <input type="number" id="fan-min" min="0" max="255" value="40" />
-              <span>–</span>
-              <input type="number" id="fan-max" min="0" max="255" value="255" />
-              <button class="btn" onclick="sendFanRange()">Set</button>
-            </div>
-            <div class="form-row">
-              <button class="btn" onclick="send('test fan 0')">Fan Off</button>
-              <button class="btn" onclick="send('test fan 200')">Fan On (200)</button>
-              <button class="btn" onclick="send('test fan -1')">Fan Auto</button>
+              <button class="btn" onclick="send('test fan off')">Fan Off</button>
+              <button class="btn" onclick="send('test fan on')">Fan On</button>
+              <button class="btn" onclick="send('test fan auto')">Fan Auto</button>
             </div>
           </div>
 

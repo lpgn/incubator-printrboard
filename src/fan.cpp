@@ -20,53 +20,36 @@ FanController::FanController()
 
 void FanController::begin() {
     pinMode(FAN_PIN, OUTPUT);
-    analogWrite(FAN_PIN, _currentSpeed);
+    digitalWrite(FAN_PIN, LOW);
 }
 
 void FanController::update(float tempError, float humidError) {
     if (_manualMode) {
-        _currentSpeed = (uint8_t)_manualSpeed;
-        analogWrite(FAN_PIN, _currentSpeed);
+        _currentSpeed = (_manualSpeed > 0) ? _maxSpeed : 0;
+        digitalWrite(FAN_PIN, _currentSpeed > 0 ? HIGH : LOW);
         return;
     }
 
-    // Start from base speed
-    float speed = (float)FAN_BASE_SPEED;
+    // Binary fan control: ON or OFF
+    bool shouldBeOn = false;
 
     // --- Temperature component (PRIORITY) ---
-    // tempError > 0 means too cold, < 0 means too hot
-    if (tempError < -0.3f) {
-        // Too hot — ramp up fan proportionally
-        // At -1°C error → +100 speed, at -2°C → +200 (capped at max)
-        float tempBoost = (-tempError - 0.3f) * 100.0f;
-        if (tempBoost > 200.0f) tempBoost = 200.0f;
-        speed += tempBoost;
+    // tempError < 0 means too hot
+    if (tempError < -0.5f) {
+        shouldBeOn = true;
     }
 
     // --- Humidity component (secondary) ---
-    // humidError > 0 means too dry, < 0 means too wet
     // Only apply if temperature is not in a critical state
     if (tempError > -1.0f && tempError < 1.0f) {
-        // Temperature is roughly OK — adjust for humidity
         if (humidError > 3.0f) {
-            // Too dry — more fan = more evaporation from water tray
-            float humBoost = (humidError - 3.0f) * 5.0f;
-            if (humBoost > 80.0f) humBoost = 80.0f;
-            speed += humBoost;
-        } else if (humidError < -5.0f) {
-            // Too wet — less fan = less evaporation
-            float humReduce = (-humidError - 5.0f) * 5.0f;
-            if (humReduce > 40.0f) humReduce = 40.0f;
-            speed -= humReduce;
+            // Too dry — more airflow over water tray
+            shouldBeOn = true;
         }
     }
 
-    // Clamp to range
-    if (speed < (float)_minSpeed) speed = (float)_minSpeed;
-    if (speed > (float)_maxSpeed) speed = (float)_maxSpeed;
-
-    _currentSpeed = (uint8_t)speed;
-    analogWrite(FAN_PIN, _currentSpeed);
+    _currentSpeed = shouldBeOn ? _maxSpeed : 0;
+    digitalWrite(FAN_PIN, shouldBeOn ? HIGH : LOW);
 }
 
 void FanController::setManualSpeed(int16_t speed) {
@@ -75,10 +58,9 @@ void FanController::setManualSpeed(int16_t speed) {
         _manualSpeed = -1;
     } else {
         _manualMode = true;
-        if (speed > 255) speed = 255;
-        _manualSpeed = speed;
-        _currentSpeed = (uint8_t)speed;
-        analogWrite(FAN_PIN, _currentSpeed);
+        _manualSpeed = (speed > 0) ? (int16_t)_maxSpeed : 0;
+        _currentSpeed = (uint8_t)_manualSpeed;
+        digitalWrite(FAN_PIN, _currentSpeed > 0 ? HIGH : LOW);
     }
 }
 
@@ -89,10 +71,10 @@ void FanController::setSpeedRange(uint8_t min, uint8_t max) {
 }
 
 uint8_t FanController::getSpeedPercent() const {
-    return (uint8_t)((uint16_t)_currentSpeed * 100 / 255);
+    return _currentSpeed > 0 ? 100 : 0;
 }
 
 void FanController::fullSpeed() {
     _currentSpeed = _maxSpeed;
-    analogWrite(FAN_PIN, _currentSpeed);
+    digitalWrite(FAN_PIN, HIGH);
 }

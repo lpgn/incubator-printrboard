@@ -28,7 +28,8 @@ Heater::Heater()
 
 void Heater::begin() {
     pinMode(HEATER_PIN, OUTPUT);
-    analogWrite(HEATER_PIN, 0); // Start with heater OFF
+    _currentPWM = 0;
+    update(); // Start with heater OFF
     loadCalibrationPoints();
 }
 
@@ -61,7 +62,16 @@ void Heater::setOutput(uint8_t pwm) {
         pwm = _manualPWM;
     }
     _currentPWM = pwm;
-    analogWrite(HEATER_PIN, _currentPWM);
+    update();
+}
+
+void Heater::update() {
+    // Slow PWM: toggle pin once per HEATER_SLOW_PWM_PERIOD_MS to eliminate audible whine
+    unsigned long now = millis();
+    uint16_t period = HEATER_SLOW_PWM_PERIOD_MS;
+    uint16_t onTime = ((uint16_t)_currentPWM * period) / 255;
+    unsigned long phase = now % period;
+    digitalWrite(HEATER_PIN, phase < onTime ? HIGH : LOW);
 }
 
 void Heater::setCustomThermistor(float nominalR, float beta) {
@@ -77,7 +87,7 @@ void Heater::setManualSpeed(int16_t speed) {
 void Heater::shutdown() {
     _isShutdown = true;
     _currentPWM = 0;
-    analogWrite(HEATER_PIN, 0);
+    update();
 }
 
 float Heater::adcToTemperature(uint16_t adcValue) {

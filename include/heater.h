@@ -29,8 +29,11 @@ public:
     // Read raw averaged ADC value (0-1023) for diagnostics
     uint16_t readRawADC();
 
-    // Set heater PWM output (0-255)
+    // Set heater target duty (0-255). Actual pin is updated by update() for slow PWM.
     void setOutput(uint8_t pwm);
+
+    // Call frequently in main loop to handle slow PWM pin toggling
+    void update();
 
     // Manual override (0-255), set to -1 to return to auto
     void setManualSpeed(int16_t speed);

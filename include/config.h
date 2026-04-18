@@ -56,7 +56,7 @@
 // Thermistor selection
 #define THERMISTOR_EPCOS_100K   0   // Generic 100K NTC (EPCOS B57560G104F)
 #define THERMISTOR_CARBONMINI   1   // Custom extruder thermistor (R25~155K, beta~4092)
-#define THERMISTOR_TYPE         THERMISTOR_EPCOS_100K  // Change this to switch profiles
+#define THERMISTOR_TYPE         THERMISTOR_CARBONMINI  // Extruder thermistor on Printrboard
 
 #if THERMISTOR_TYPE == THERMISTOR_EPCOS_100K
     #define THERM_NOMINAL_R     100000.0f  // Resistance at nominal temperature
@@ -70,7 +70,7 @@
     #error "Unknown THERMISTOR_TYPE selected"
 #endif
 
-#define THERM_SERIES_R      7620.0f    // Series resistor value (ohms) — matched to extruder thermistor circuit
+#define THERM_SERIES_R      4700.0f    // Series resistor value (ohms)
 #define THERM_ADC_MAX       1023       // 10-bit ADC
 
 // ADC oversampling
@@ -122,9 +122,11 @@
 // FAN CONFIGURATION
 // =============================================================================
 
-#define FAN_BASE_SPEED      76         // ~30% PWM — base circulation speed
-#define FAN_MIN_SPEED       40         // Minimum fan speed (don't stall)
-#define FAN_MAX_SPEED       255        // Maximum fan speed
+#define FAN_BASE_SPEED      255        // Full ON for circulation
+#define FAN_MIN_SPEED       0          // Fan is binary: OFF
+#define FAN_MAX_SPEED       255        // Fan is binary: ON
+
+#define HEATER_SLOW_PWM_PERIOD_MS  2000  // 2-second slow PWM cycle (0.5Hz) — eliminates audible MOSFET whine
 
 // =============================================================================
 // PREHEATING CONFIGURATION

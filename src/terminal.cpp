@@ -258,8 +258,10 @@ void Terminal::cmdHelp() {
     Serial.println(F("HARDWARE TEST:"));
     Serial.println(F("  test temp            Read thermistor ADC and temperature"));
     Serial.println(F("  test dht             Read DHT humidity and temperature"));
-    Serial.println(F("  test heater <pwm>    Force heater PWM 0-255, -1 = auto"));
-    Serial.println(F("  test fan <pwm>       Force fan PWM 0-255 (-1 = auto)"));
+    Serial.println(F("  test heater <pwm>    Force heater duty 0-255, -1 = auto"));
+    Serial.println(F("  test fan on          Force fan ON"));
+    Serial.println(F("  test fan off         Force fan OFF"));
+    Serial.println(F("  test fan auto        Return fan to auto control"));
     Serial.println(F("  test motor           Trigger one egg turn immediately (no-count)"));
     Serial.println();
     Serial.println(F("SAFETY OVERRIDE:"));
@@ -735,16 +737,19 @@ void Terminal::cmdTest(const char* args) {
         }
     }
     else if (strncasecmp(args, "fan ", 4) == 0) {
-        int pwm = atoi(args + 4);
-        if (pwm == -1) {
+        const char* sub = args + 4;
+        while (*sub == ' ') sub++;
+        if (strncasecmp(sub, "on", 2) == 0) {
+            _fan->setManualSpeed(255);
+            Serial.println(F("[TEST] Fan ON."));
+        } else if (strncasecmp(sub, "off", 3) == 0) {
+            _fan->setManualSpeed(0);
+            Serial.println(F("[TEST] Fan OFF."));
+        } else if (strncasecmp(sub, "auto", 4) == 0) {
             _fan->setManualSpeed(-1);
             Serial.println(F("[TEST] Fan returned to AUTO mode."));
-        } else if (pwm < 0 || pwm > 255) {
-            Serial.println(F("Usage: test fan <0-255> or test fan -1"));
         } else {
-            _fan->setManualSpeed((int16_t)pwm);
-            Serial.print(F("[TEST] Fan PWM set to "));
-            Serial.println(pwm);
+            Serial.println(F("Usage: test fan on|off|auto"));
         }
     }
     else if (strncasecmp(args, "dht", 3) == 0) {
@@ -773,7 +778,7 @@ void Terminal::cmdTest(const char* args) {
         }
     }
     else {
-        Serial.println(F("Usage: test temp|dht|heater <pwm>|fan <pwm>|motor"));
+        Serial.println(F("Usage: test temp|dht|heater <pwm>|fan on|off|auto|motor"));
     }
 }
 
