@@ -31,7 +31,7 @@
 // Marlin FAN_PIN 16 (small 2-pin Molex FAN header)
 #define FAN_PIN             16
 
-// --- DHT22: Humidity + temperature sensor (optional) ---
+// --- DHT: Humidity + temperature sensor (optional) ---
 // Using PD2 on EXP2 header — safe, does not conflict with steppers/heaters
 #define DHT22_PIN           2
 
@@ -106,10 +106,14 @@
 #define TEMP_SENSOR_FAIL_HI 1022       // ADC value indicating short circuit
 
 // =============================================================================
-// DHT22 CONFIGURATION
+// DHT HUMIDITY SENSOR CONFIGURATION
 // =============================================================================
 
-#define DHT_READ_INTERVAL_MS  5000     // Read DHT22 every 5 seconds
+#define DHT_TYPE_DHT11      0
+#define DHT_TYPE_DHT22      1
+#define DHT_TYPE            DHT_TYPE_DHT11  // Change this to switch sensor type
+
+#define DHT_READ_INTERVAL_MS  5000     // Read sensor every 5 seconds
 #define DHT_MAX_FAILURES      3        // Consecutive failures before warning
 #define HUMIDITY_MAX_ALARM    80.0f    // % — fan ramps up
 #define HUMIDITY_MIN_ALARM    30.0f    // % — warning to refill water

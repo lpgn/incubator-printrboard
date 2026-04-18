@@ -30,6 +30,9 @@ bool SafetyMonitor::check(float temperature, float humidity,
         }
         anyAlarm = true;
     } else {
+        if (_sensorFail) {
+            Serial.println(F("RECOVERED: Thermistor sensor OK"));
+        }
         _sensorFail = false;
     }
 
@@ -50,6 +53,11 @@ bool SafetyMonitor::check(float temperature, float humidity,
             anyAlarm = true;
         }
     } else {
+        if (_overTemp) {
+            Serial.print(F("RECOVERED: Over-temp cleared. Temp "));
+            Serial.print(temperature, 1);
+            Serial.println(F("C"));
+        }
         _overTempTiming = false;
         _overTemp = false;
     }
@@ -70,6 +78,11 @@ bool SafetyMonitor::check(float temperature, float humidity,
             anyAlarm = true;
         }
     } else {
+        if (_underTemp) {
+            Serial.print(F("RECOVERED: Under-temp cleared. Temp "));
+            Serial.print(temperature, 1);
+            Serial.println(F("C"));
+        }
         _underTempTiming = false;
         _underTemp = false;
     }
@@ -84,6 +97,11 @@ bool SafetyMonitor::check(float temperature, float humidity,
         }
         anyAlarm = true;
     } else {
+        if (_humidHigh) {
+            Serial.print(F("RECOVERED: Humidity HIGH cleared. Humidity "));
+            Serial.print(humidity, 1);
+            Serial.println(F("%"));
+        }
         _humidHigh = false;
     }
 
@@ -97,6 +115,11 @@ bool SafetyMonitor::check(float temperature, float humidity,
         }
         anyAlarm = true;
     } else {
+        if (_humidLow) {
+            Serial.print(F("RECOVERED: Humidity LOW cleared. Humidity "));
+            Serial.print(humidity, 1);
+            Serial.println(F("%"));
+        }
         _humidLow = false;
     }
 
@@ -105,7 +128,7 @@ bool SafetyMonitor::check(float temperature, float humidity,
         // Don't set a hard alarm, just report periodically
         static unsigned long lastDHTWarn = 0;
         if (millis() - lastDHTWarn > 30000) {
-            Serial.println(F("WARNING: DHT22 sensor read failures — using last known humidity."));
+            Serial.println(F("WARNING: DHT sensor read failures — using last known humidity."));
             lastDHTWarn = millis();
         }
     }

@@ -5,7 +5,7 @@
 #include "config.h"
 
 // =============================================================================
-// DHT22 Temperature & Humidity Sensor Driver
+// DHT11/DHT22 Temperature & Humidity Sensor Driver
 // Bit-bang 1-wire protocol — no external library needed
 // =============================================================================
 
@@ -17,7 +17,7 @@ public:
     void begin();
 
     // Read sensor data. Returns true on success.
-    // Call no more than once every 2 seconds (DHT22 limitation).
+    // Call no more than once every 2 seconds (DHT22 limitation; DHT11 can be read every 1s).
     bool read();
 
     // Get last successful readings

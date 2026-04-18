@@ -133,7 +133,9 @@ void Terminal::printStatus() {
         }
         Serial.print(F(" H="));
         Serial.print(humidity, 0);
-        Serial.print(F("% HTR="));
+        Serial.print(F("% DHT="));
+        Serial.print(_humid->getTemperature(), 1);
+        Serial.print(F("C HTR="));
         Serial.print((uint16_t)_heater->getOutput() * 100 / 255);
         Serial.print(F("% FAN="));
         Serial.print(_fan->getSpeedPercent());
@@ -162,7 +164,9 @@ void Terminal::printStatus() {
     }
     Serial.print(F(" H="));
     Serial.print(humidity, 0);
-    Serial.print(F("% HTR="));
+    Serial.print(F("% DHT="));
+    Serial.print(_humid->getTemperature(), 1);
+    Serial.print(F("C HTR="));
     Serial.print((uint16_t)_heater->getOutput() * 100 / 255);
     Serial.print(F("% FAN="));
     Serial.print(_fan->getSpeedPercent());
@@ -253,6 +257,7 @@ void Terminal::cmdHelp() {
     Serial.println(F(""));
     Serial.println(F("HARDWARE TEST:"));
     Serial.println(F("  test temp            Read thermistor ADC and temperature"));
+    Serial.println(F("  test dht             Read DHT humidity and temperature"));
     Serial.println(F("  test heater <pwm>    Force heater PWM 0-255, -1 = auto"));
     Serial.println(F("  test fan <pwm>       Force fan PWM 0-255 (-1 = auto)"));
     Serial.println(F("  test motor           Trigger one egg turn immediately (no-count)"));
@@ -742,6 +747,22 @@ void Terminal::cmdTest(const char* args) {
             Serial.println(pwm);
         }
     }
+    else if (strncasecmp(args, "dht", 3) == 0) {
+        Serial.print(F("[TEST] DHT present: "));
+        Serial.println(_humid->isPresent() ? F("YES") : F("NO"));
+        Serial.print(F("[TEST] DHT failures: "));
+        Serial.println(_humid->getFailureCount());
+        if (_humid->read()) {
+            Serial.print(F("[TEST] DHT humidity: "));
+            Serial.print(_humid->getHumidity(), 1);
+            Serial.println(F("%"));
+            Serial.print(F("[TEST] DHT temperature: "));
+            Serial.print(_humid->getTemperature(), 1);
+            Serial.println(F("C"));
+        } else {
+            Serial.println(F("[TEST] DHT read FAILED — check wiring and pull-up resistor"));
+        }
+    }
     else if (strncasecmp(args, "motor", 5) == 0) {
         if (_turner->isStepping()) {
             Serial.println(F("[TEST] Motor is already turning. Wait for it to finish."));
@@ -751,7 +772,7 @@ void Terminal::cmdTest(const char* args) {
         }
     }
     else {
-        Serial.println(F("Usage: test temp|heater <pwm>|fan <pwm>|motor"));
+        Serial.println(F("Usage: test temp|dht|heater <pwm>|fan <pwm>|motor"));
     }
 }
 

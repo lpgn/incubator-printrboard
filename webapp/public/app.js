@@ -5,6 +5,7 @@ const cmdInput = document.getElementById('cmd-input');
 const els = {
   temp: document.getElementById('val-temp'),
   humidity: document.getElementById('val-humidity'),
+  dhtTemp: document.getElementById('val-dht-temp'),
   heater: document.getElementById('val-heater'),
   fan: document.getElementById('val-fan'),
   state: document.getElementById('val-state'),
@@ -85,6 +86,7 @@ function updateStatus(s) {
     els.temp.textContent = (s.temp === -999.0) ? 'ERR' : s.temp.toFixed(1);
   }
   if (s.humidity !== null && s.humidity !== undefined) els.humidity.textContent = s.humidity;
+  if (s.dhtTemp !== null && s.dhtTemp !== undefined) els.dhtTemp.textContent = s.dhtTemp.toFixed(1);
   if (s.heater !== null && s.heater !== undefined) els.heater.textContent = s.heater;
   if (s.fan !== null && s.fan !== undefined) els.fan.textContent = s.fan;
 
@@ -223,6 +225,17 @@ function initChart() {
           pointHoverRadius: 0,
           yAxisID: 'y',
           tension: 0
+        },
+        {
+          label: 'DHT Temp (°C)',
+          data: [],
+          borderColor: '#10b981',
+          borderWidth: 2,
+          fill: false,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          yAxisID: 'y',
+          tension: 0.4
         }
       ]
     },
@@ -275,6 +288,7 @@ function appendHistory(points) {
   const d0 = tempChart.data.datasets[0].data;
   const d1 = tempChart.data.datasets[1].data;
   const d2 = tempChart.data.datasets[2].data;
+  const d3 = tempChart.data.datasets[3].data;
 
   let batchTarget = null;
   for (const p of points) {
@@ -293,6 +307,7 @@ function appendHistory(points) {
     d0.push(p.temp);
     d1.push(p.humidity);
     d2.push(p.targetTemp != null ? p.targetTemp : null);
+    d3.push(p.dhtTemp != null ? p.dhtTemp : null);
   }
 
   const max = 2880;
@@ -302,6 +317,7 @@ function appendHistory(points) {
     d0.splice(0, drop);
     d1.splice(0, drop);
     d2.splice(0, drop);
+    d3.splice(0, drop);
   }
 
   tempChart.update('none');

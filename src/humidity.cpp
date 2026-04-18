@@ -2,7 +2,7 @@
 #include "config.h"
 
 // =============================================================================
-// DHT22 Bit-Bang Driver Implementation
+// DHT11/DHT22 Bit-Bang Driver Implementation
 // Protocol: single-wire, custom timing (not I2C, not 1-Wire Dallas)
 // =============================================================================
 
@@ -37,6 +37,7 @@ bool HumiditySensor::read() {
         return false;
     }
 
+#if DHT_TYPE == DHT_TYPE_DHT22
     // Parse humidity (data[0] MSB, data[1] LSB) — value × 10
     uint16_t rawHumidity = ((uint16_t)data[0] << 8) | data[1];
     _humidity = (float)rawHumidity / 10.0f;
@@ -50,6 +51,13 @@ bool HumiditySensor::read() {
     } else {
         _temperature = (float)rawTemp / 10.0f;
     }
+#elif DHT_TYPE == DHT_TYPE_DHT11
+    // DHT11: 8-bit integer humidity and temperature
+    _humidity = (float)data[0];
+    _temperature = (float)data[2];
+#else
+    #error "Unknown DHT_TYPE"
+#endif
 
     // Sanity check
     if (_humidity < 0.0f || _humidity > 100.0f || _temperature < -40.0f || _temperature > 80.0f) {
@@ -63,10 +71,14 @@ bool HumiditySensor::read() {
 
 bool HumiditySensor::readRawData(uint8_t data[5]) {
     // === START SIGNAL ===
-    // Pull data line LOW for at least 1ms (we use 2ms)
+    // DHT11 needs ~18ms+, DHT22 needs ~1ms
     pinMode(DHT22_PIN, OUTPUT);
     digitalWrite(DHT22_PIN, LOW);
+#if DHT_TYPE == DHT_TYPE_DHT11
+    delay(20);
+#else
     delay(2);
+#endif
 
     // Release line (pull HIGH via pull-up)
     digitalWrite(DHT22_PIN, HIGH);
@@ -76,26 +88,28 @@ bool HumiditySensor::readRawData(uint8_t data[5]) {
     pinMode(DHT22_PIN, INPUT_PULLUP);
 
     // === RESPONSE SIGNAL ===
-    // DHT22 pulls LOW for ~80µs, then HIGH for ~80µs
+    // Disable interrupts during timing-critical section — USB SOF on AT90USB1286
+    // can fire every 1ms and skew microsecond timing.
+    noInterrupts();
 
     // Wait for LOW (response start) — timeout after 100µs
     uint8_t timeout = 100;
     while (digitalRead(DHT22_PIN) == HIGH) {
-        if (--timeout == 0) return false;
+        if (--timeout == 0) { interrupts(); return false; }
         delayMicroseconds(1);
     }
 
     // Wait for HIGH (response acknowledge)
     timeout = 100;
     while (digitalRead(DHT22_PIN) == LOW) {
-        if (--timeout == 0) return false;
+        if (--timeout == 0) { interrupts(); return false; }
         delayMicroseconds(1);
     }
 
     // Wait for LOW (data transmission start)
     timeout = 100;
     while (digitalRead(DHT22_PIN) == HIGH) {
-        if (--timeout == 0) return false;
+        if (--timeout == 0) { interrupts(); return false; }
         delayMicroseconds(1);
     }
 
@@ -105,7 +119,7 @@ bool HumiditySensor::readRawData(uint8_t data[5]) {
         // Wait for HIGH (start of bit)
         timeout = 100;
         while (digitalRead(DHT22_PIN) == LOW) {
-            if (--timeout == 0) return false;
+            if (--timeout == 0) { interrupts(); return false; }
             delayMicroseconds(1);
         }
 
@@ -113,7 +127,7 @@ bool HumiditySensor::readRawData(uint8_t data[5]) {
         unsigned long tStart = micros();
         timeout = 100;
         while (digitalRead(DHT22_PIN) == HIGH) {
-            if (--timeout == 0) return false;
+            if (--timeout == 0) { interrupts(); return false; }
             delayMicroseconds(1);
         }
         unsigned long tHigh = micros() - tStart;
@@ -126,6 +140,7 @@ bool HumiditySensor::readRawData(uint8_t data[5]) {
         }
     }
 
+    interrupts();
     return true;
 }
 

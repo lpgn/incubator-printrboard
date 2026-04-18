@@ -22,6 +22,7 @@ let lastStatus = {
   adc: null,
   adcTarget: null,
   humidity: null,
+  dhtTemp: null,
   heater: null,
   fan: null,
   state: null,
@@ -56,11 +57,16 @@ function parseAlarms(line) {
   if (line.includes('ALARM: Thermistor sensor FAILED')) lastAlarms.sensorFail = true;
   if (line.includes('ALARM: OVER-TEMP')) lastAlarms.overTemp = true;
   if (line.includes('WARNING: Under-temp')) lastAlarms.underTemp = true;
-  if (line.includes('DHT22 sensor read failures')) lastAlarms.dhtFail = true;
+  if (line.includes('DHT sensor read failures')) lastAlarms.dhtFail = true;
   if (line.includes('WARNING: Humidity HIGH')) lastAlarms.humidHigh = true;
   if (line.includes('WARNING: Humidity LOW')) lastAlarms.humidLow = true;
   if (line.includes('ERROR STATE')) lastAlarms.errorState = true;
   if (line.includes('RECOVERED from error')) lastAlarms.errorState = false;
+  if (line.includes('RECOVERED: Thermistor sensor OK')) lastAlarms.sensorFail = false;
+  if (line.includes('RECOVERED: Over-temp cleared')) lastAlarms.overTemp = false;
+  if (line.includes('RECOVERED: Under-temp cleared')) lastAlarms.underTemp = false;
+  if (line.includes('RECOVERED: Humidity HIGH cleared')) lastAlarms.humidHigh = false;
+  if (line.includes('RECOVERED: Humidity LOW cleared')) lastAlarms.humidLow = false;
   if (line.includes('Safety override ENABLED')) lastAlarms.overridden = true;
   if (line.includes('Safety override DISABLED')) lastAlarms.overridden = false;
   if (line.includes('Reset complete')) {
@@ -79,9 +85,9 @@ function parseAlarms(line) {
 function parseStatusLine(line) {
   let result = null;
 
-  // Match: [DAY 01/21] T=21.8C ADC=642 TARGET=37.5C H=0% HTR=0% FAN=29% STATE=ERROR
-  // or:   [DAY 01/21] T=21.8C ADC=642 ADCTARGET=580 H=0% HTR=0% FAN=29% STATE=ERROR
-  const dayMatch = line.match(/\[DAY\s+(\d+)\/(\d+)\]\s+T=([\d.-]+)C\s+ADC=(\d+)\s+(?:TARGET=([\d.]+)C|ADCTARGET=(\d+))\s+H=(\d+)%\s+HTR=(\d+)%\s+FAN=(\d+)%\s+STATE=(\S+)/);
+  // Match: [DAY 01/21] T=21.8C ADC=642 TARGET=37.5C H=0% DHT=22.1C HTR=0% FAN=29% STATE=ERROR
+  // or:   [DAY 01/21] T=21.8C ADC=642 ADCTARGET=580 H=0% DHT=22.1C HTR=0% FAN=29% STATE=ERROR
+  const dayMatch = line.match(/\[DAY\s+(\d+)\/(\d+)\]\s+T=([\d.-]+)C\s+ADC=(\d+)\s+(?:TARGET=([\d.]+)C|ADCTARGET=(\d+))\s+H=(\d+)%\s+(?:DHT=([\d.-]+)C\s+)?HTR=(\d+)%\s+FAN=(\d+)%\s+STATE=(\S+)/);
   if (dayMatch) {
     const adcTarget = dayMatch[6] ? parseInt(dayMatch[6], 10) : null;
     lastStatus.targetTemp = adcTarget ? null : parseFloat(dayMatch[5]);
@@ -93,15 +99,16 @@ function parseStatusLine(line) {
       adc: parseInt(dayMatch[4], 10),
       adcTarget: adcTarget,
       humidity: parseInt(dayMatch[7], 10),
-      heater: parseInt(dayMatch[8], 10),
-      fan: parseInt(dayMatch[9], 10),
-      state: dayMatch[10]
+      dhtTemp: dayMatch[8] ? parseFloat(dayMatch[8]) : null,
+      heater: parseInt(dayMatch[9], 10),
+      fan: parseInt(dayMatch[10], 10),
+      state: dayMatch[11]
     };
   }
 
-  // Match: [IDLE] T=21.8C ADC=642 TARGET=37.5C H=0% HTR=0% FAN=0%
-  // or:   [IDLE] T=21.8C ADC=642 ADCTARGET=580 H=0% HTR=0% FAN=0%
-  const idleMatch = line.match(/\[IDLE\]\s+T=([\d.-]+)C\s+ADC=(\d+)\s+(?:TARGET=([\d.]+)C|ADCTARGET=(\d+))\s+H=(\d+)%\s+HTR=(\d+)%\s+FAN=(\d+)%/);
+  // Match: [IDLE] T=21.8C ADC=642 TARGET=37.5C H=0% DHT=22.1C HTR=0% FAN=0%
+  // or:   [IDLE] T=21.8C ADC=642 ADCTARGET=580 H=0% DHT=22.1C HTR=0% FAN=0%
+  const idleMatch = line.match(/\[IDLE\]\s+T=([\d.-]+)C\s+ADC=(\d+)\s+(?:TARGET=([\d.]+)C|ADCTARGET=(\d+))\s+H=(\d+)%\s+(?:DHT=([\d.-]+)C\s+)?HTR=(\d+)%\s+FAN=(\d+)%/);
   if (idleMatch) {
     const adcTarget = idleMatch[4] ? parseInt(idleMatch[4], 10) : null;
     lastStatus.targetTemp = adcTarget ? null : parseFloat(idleMatch[3]);
@@ -113,18 +120,21 @@ function parseStatusLine(line) {
       adc: parseInt(idleMatch[2], 10),
       adcTarget: adcTarget,
       humidity: parseInt(idleMatch[5], 10),
-      heater: parseInt(idleMatch[6], 10),
-      fan: parseInt(idleMatch[7], 10),
+      dhtTemp: idleMatch[6] ? parseFloat(idleMatch[6]) : null,
+      heater: parseInt(idleMatch[7], 10),
+      fan: parseInt(idleMatch[8], 10),
       state: 'IDLE'
     };
   }
 
   if (result) {
     result.targetTemp = lastStatus.targetTemp;
+    lastStatus.dhtTemp = result.dhtTemp;
     const point = {
       t: new Date().toISOString(),
       temp: result.temp,
       humidity: result.humidity,
+      dhtTemp: result.dhtTemp,
       heater: result.heater,
       fan: result.fan,
       state: result.state,
