@@ -33,6 +33,9 @@ public:
     // Is sensor physically present? Goes false after many consecutive failures.
     bool isPresent() const { return _present; }
 
+    // Reset presence and failures so the sensor is re-detected
+    void reset();
+
     // Get midpoint humidity target for current phase
     static float getHumidityMidpoint(uint8_t lo, uint8_t hi);
 

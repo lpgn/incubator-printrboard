@@ -13,6 +13,12 @@ void HumiditySensor::begin() {
     pinMode(DHT22_PIN, INPUT_PULLUP);
 }
 
+void HumiditySensor::reset() {
+    _present = true;
+    _failures = 0;
+    pinMode(DHT22_PIN, INPUT_PULLUP);
+}
+
 bool HumiditySensor::read() {
     if (!_present) {
         return false;

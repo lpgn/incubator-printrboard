@@ -748,6 +748,7 @@ void Terminal::cmdTest(const char* args) {
         }
     }
     else if (strncasecmp(args, "dht", 3) == 0) {
+        _humid->reset();
         Serial.print(F("[TEST] DHT present: "));
         Serial.println(_humid->isPresent() ? F("YES") : F("NO"));
         Serial.print(F("[TEST] DHT failures: "));

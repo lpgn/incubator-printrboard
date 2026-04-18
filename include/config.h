@@ -70,7 +70,7 @@
     #error "Unknown THERMISTOR_TYPE selected"
 #endif
 
-#define THERM_SERIES_R      4700.0f    // Series resistor value (ohms)
+#define THERM_SERIES_R      7620.0f    // Series resistor value (ohms) — matched to extruder thermistor circuit
 #define THERM_ADC_MAX       1023       // 10-bit ADC
 
 // ADC oversampling
