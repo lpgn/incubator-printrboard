@@ -127,6 +127,32 @@ function updateStatus(s) {
       adcBadge.style.color = 'var(--muted)';
     }
   }
+
+  // Update Smart Toggles
+  const btnStart = document.getElementById('btn-toggle-start');
+  const btnPause = document.getElementById('btn-toggle-pause');
+  if (btnStart && btnPause && s.hasOwnProperty('state')) {
+    const isRunning = (s.state !== 'IDLE' && s.state !== 'DONE' && s.state !== 'ERROR');
+    if (isRunning) {
+      btnStart.textContent = '■ Stop';
+      btnStart.className = 'btn btn-danger';
+      window._currentStartAction = 'stop';
+    } else {
+      btnStart.textContent = '▶ Start';
+      btnStart.className = 'btn btn-success';
+      window._currentStartAction = 'start';
+    }
+
+    if (s.state === 'PAUSED') {
+      btnPause.textContent = '⏵ Resume';
+      btnPause.className = 'btn btn-primary';
+      window._currentPauseAction = 'resume';
+    } else {
+      btnPause.textContent = '⏸ Pause';
+      btnPause.className = 'btn';
+      window._currentPauseAction = 'pause';
+    }
+  }
 }
 
 function updateAlarms(alarms) {
@@ -463,5 +489,20 @@ function updateCustomLock() {
   const hi = document.getElementById('custom-lock-hi').value;
   send('custom lock ' + lo + ' ' + hi);
 }
+
+function toggleStart() {
+  if (window._currentStartAction) send(window._currentStartAction);
+  else send('start');
+}
+
+function togglePause() {
+  if (window._currentPauseAction) send(window._currentPauseAction);
+  else send('pause');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const chickBtn = document.getElementById('btn-species-chicken');
+  if (chickBtn) chickBtn.style.borderColor = 'var(--accent)';
+});
 
 connect();
