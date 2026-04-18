@@ -69,7 +69,7 @@ void Heater::update() {
     // Slow PWM: toggle pin once per HEATER_SLOW_PWM_PERIOD_MS to eliminate audible whine
     unsigned long now = millis();
     uint16_t period = HEATER_SLOW_PWM_PERIOD_MS;
-    uint16_t onTime = ((uint16_t)_currentPWM * period) / 255;
+    unsigned long onTime = ((unsigned long)_currentPWM * period) / 255;
     unsigned long phase = now % period;
     digitalWrite(HEATER_PIN, phase < onTime ? HIGH : LOW);
 }

@@ -56,7 +56,7 @@
 // Thermistor selection
 #define THERMISTOR_EPCOS_100K   0   // Generic 100K NTC (EPCOS B57560G104F)
 #define THERMISTOR_CARBONMINI   1   // Custom extruder thermistor (R25~155K, beta~4092)
-#define THERMISTOR_TYPE         THERMISTOR_CARBONMINI  // Extruder thermistor on Printrboard
+#define THERMISTOR_TYPE         THERMISTOR_EPCOS_100K  // Extruder thermistor on Printrboard
 
 #if THERMISTOR_TYPE == THERMISTOR_EPCOS_100K
     #define THERM_NOMINAL_R     100000.0f  // Resistance at nominal temperature
@@ -88,7 +88,7 @@
 #define PID_DEFAULT_KD      6893.71f
 #define PID_OUTPUT_MIN      0
 #define PID_OUTPUT_MAX      255
-#define PID_PREHEAT_MAX     60         // Max PWM during preheat (~23%)
+#define PID_PREHEAT_MAX     255        // Max PWM during preheat (100%)
 #define PID_WINDUP_LIMIT    100.0f     // Anti-windup integral limit
 
 // Autotune
