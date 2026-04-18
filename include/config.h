@@ -55,17 +55,12 @@
 
 // Thermistor selection
 #define THERMISTOR_EPCOS_100K   0   // Generic 100K NTC (EPCOS B57560G104F)
-#define THERMISTOR_CARBONMINI   1   // Custom extruder thermistor (R25~155K, beta~4092)
 #define THERMISTOR_TYPE         THERMISTOR_EPCOS_100K  // Extruder thermistor on Printrboard
 
 #if THERMISTOR_TYPE == THERMISTOR_EPCOS_100K
     #define THERM_NOMINAL_R     100000.0f  // Resistance at nominal temperature
     #define THERM_NOMINAL_T     25.0f      // Nominal temperature (°C)
     #define THERM_BETA          3950.0f    // Beta coefficient
-#elif THERMISTOR_TYPE == THERMISTOR_CARBONMINI
-    #define THERM_NOMINAL_R     155570.0f  // R25 measured from Marlin thermistor table #28
-    #define THERM_NOMINAL_T     25.0f      // Nominal temperature (°C)
-    #define THERM_BETA          4092.0f    // Best-fit beta for 30-45°C range
 #else
     #error "Unknown THERMISTOR_TYPE selected"
 #endif
