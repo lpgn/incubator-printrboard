@@ -399,37 +399,6 @@ html, body {
   .btn-grid { grid-template-columns: repeat(4, 1fr); }
 }
 
-/* Calibration */
-.cal-header {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-  margin-bottom: 24px;
-}
-@media (min-width: 720px) {
-  .cal-header { grid-template-columns: repeat(4, 1fr); }
-}
-.cal-live-card {
-  background: rgba(0,0,0,0.2);
-  border-radius: 12px;
-  padding: 20px;
-  text-align: center;
-  border: 1px solid var(--glass-border);
-}
-.cal-live-card .label {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-.cal-live-card .value {
-  font-size: 2rem;
-  font-weight: 800;
-  margin-top: 8px;
-  color: #fff;
-}
-
 .table-header {
   display: flex;
   align-items: center;
@@ -437,39 +406,6 @@ html, body {
   gap: 12px;
   flex-wrap: wrap;
   margin-bottom: 16px;
-}
-.cal-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  font-size: 1rem;
-  margin-bottom: 16px;
-}
-.cal-table th, .cal-table td {
-  padding: 12px 14px;
-  text-align: left;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-}
-.cal-table th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
-.cal-table tr:hover td { background: rgba(255,255,255,0.02); }
-.cal-table tr.empty td { color: var(--muted); text-align: center; border-bottom: none; padding: 30px; }
-
-.cal-input {
-  width: 110px;
-  background: rgba(0,0,0,0.4);
-  color: #fff;
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 6px;
-  padding: 6px 10px;
-  font-family: inherit;
-  font-size: 1rem;
-  transition: all 0.2s;
-}
-.cal-input:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 10px var(--accent-glow);
-  background: rgba(0,0,0,0.6);
 }
 
 .code-block {

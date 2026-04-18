@@ -4,14 +4,6 @@
 #include <Arduino.h>
 #include "config.h"
 
-// Set to 1 and paste your hardcoded table in heater.cpp to use a compile-time table
-#define USE_HARDCODED_CAL_TABLE 0
-
-struct CalibrationPoint {
-    uint16_t adc;
-    float actualTemp;
-};
-
 // =============================================================================
 // Heater control — PWM output + NTC thermistor reading
 // =============================================================================
@@ -65,19 +57,14 @@ public:
     float getCustomNominalR() const { return _customNominalR; }
     float getCustomBeta() const { return _customBeta; }
 
-    // --- Multi-point calibration table ---
-    bool addCalibrationPoint(float actualTemp);
-    void clearCalibrationPoints();
-    uint8_t getCalibrationPointCount() const { return _calCount; }
-    void printCalibrationPoints();
-    void printCalibrationTable();  // single-line machine-readable
-    void generateTableCode();
-    bool isUsingCalibrationTable() const { return _calCount >= 2; }
-    void loadCalibrationPoints();
+public:
+    // Convert raw ADC to temperature using active thermistor profile
+    float adcToTemperature(uint16_t adcValue);
+
+    // Convert raw ADC using arbitrary thermistor constants (for comparison/testing)
+    float adcToTemperature(uint16_t adcValue, float nominalR, float beta);
 
 private:
-    CalibrationPoint _calTable[CALIB_MAX_POINTS];
-    uint8_t _calCount;
     uint8_t _currentPWM;
     bool _sensorFailed;
     bool _isShutdown;
@@ -86,16 +73,6 @@ private:
     float _tempOffset;
     float _customNominalR;
     float _customBeta;
-
-    float interpolateFromTable(uint16_t adcValue);
-    void saveCalibrationPoints();
-
-public:
-    // Convert raw ADC to temperature using active thermistor profile
-    float adcToTemperature(uint16_t adcValue);
-
-    // Convert raw ADC using arbitrary thermistor constants (for comparison/testing)
-    float adcToTemperature(uint16_t adcValue, float nominalR, float beta);
 };
 
 #endif // HEATER_H

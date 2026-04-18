@@ -178,16 +178,6 @@ function openSerial() {
     lastStatus.connected = true;
     broadcast({ type: 'connection', connected: true, port: SERIAL_PATH });
 
-    // Request calibration table whenever port opens
-    setTimeout(() => {
-      if (port && port.isOpen) {
-        port.write('cal table\r\n', (err) => {
-          if (err) console.error('Failed to request cal table on open:', err.message);
-          else console.log('Requested cal table on serial open');
-        });
-      }
-    }, 500);
-
     parser = port.pipe(new ReadlineParser({ delimiter: '\n' }));
     parser.on('data', (line) => {
       const raw = line.trim();
@@ -204,34 +194,10 @@ function openSerial() {
         lastStatus.targetTemp = parseFloat(targetMatch[1]);
       }
 
-      const calTableMatch = raw.match(/^\[CALTABLE\]\s+(\d+):\s*(.*)$/);
-      if (calTableMatch) {
-        const count = parseInt(calTableMatch[1], 10);
-        const rest = calTableMatch[2].trim();
-        const points = [];
-        if (rest) {
-          const pairs = rest.split(/\s+/);
-          for (const p of pairs) {
-            const parts = p.split(',');
-            if (parts.length >= 2) {
-              points.push({ adc: parseInt(parts[0], 10), temp: parseFloat(parts[1]) });
-            }
-          }
-        }
-        console.log('Parsed caltable:', count, points);
-        broadcast({ type: 'caltable', count, points });
-      }
-
       const status = parseStatusLine(raw);
       if (status) {
         Object.assign(lastStatus, status);
         broadcast(status);
-      }
-
-      if (raw.includes('[CAL] Point added:') || raw.includes('[CAL] Calibration points cleared.') || raw.includes('>> Calibration reset.')) {
-        setTimeout(() => {
-          if (port && port.isOpen) port.write('cal table\r\n');
-        }, 500);
       }
 
       broadcast({ type: 'log', line: raw });
@@ -261,18 +227,6 @@ wss.on('connection', (ws) => {
   if (history.length) {
     ws.send(JSON.stringify({ type: 'history', history }));
   }
-
-  // Ask firmware for calibration table
-  setTimeout(() => {
-    if (port && port.isOpen) {
-      port.write('cal table\r\n', (err) => {
-        if (err) console.error('Failed to request cal table on WS connect:', err.message);
-        else console.log('Requested cal table on WS connect');
-      });
-    } else {
-      console.log('Serial port not open yet, skipping cal table request on WS connect');
-    }
-  }, 500);
 
   ws.on('message', (message) => {
     let cmd = '';

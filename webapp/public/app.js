@@ -59,8 +59,6 @@ function connect() {
     } else if (data.type === 'history') {
       if (!tempChart) initChart();
       appendHistory(data.history);
-    } else if (data.type === 'caltable') {
-      updateCalTable(data.points);
     } else if (data.type === 'log') {
       appendLog(data.line);
     }
@@ -116,30 +114,14 @@ function updateStatus(s) {
     if (headerDay) headerDay.textContent = 'Day -';
   }
 
-  // Calibration live display
-  if (s.adc !== null && s.adc !== undefined) {
-    const adcEl = document.getElementById('cal-adc');
-    if (adcEl) adcEl.textContent = s.adc;
-  }
-  if (s.temp !== null && s.temp !== undefined) {
-    const ftEl = document.getElementById('cal-firmware-temp');
-    if (ftEl) ftEl.textContent = s.temp.toFixed(1);
-  }
-
-  // Target display
-  const calTarget = document.getElementById('cal-target');
-  const calMode = document.getElementById('cal-mode');
+  // ADC target mode badge in settings
   const adcBadge = document.getElementById('adc-mode-badge');
   if (s.adcTarget !== null && s.adcTarget !== undefined) {
-    if (calTarget) calTarget.textContent = 'ADC ' + s.adcTarget;
-    if (calMode) calMode.textContent = 'ADC Mode';
     if (adcBadge) {
       adcBadge.textContent = 'ADC Mode (target ' + s.adcTarget + ')';
       adcBadge.style.color = 'var(--accent)';
     }
   } else if (s.targetTemp !== null && s.targetTemp !== undefined) {
-    if (calTarget) calTarget.textContent = s.targetTemp.toFixed(1) + '°C';
-    if (calMode) calMode.textContent = 'Temp Mode';
     if (adcBadge) {
       adcBadge.textContent = 'Temp Mode';
       adcBadge.style.color = 'var(--muted)';
@@ -480,89 +462,6 @@ function updateCustomLock() {
   const lo = document.getElementById('custom-lock-lo').value;
   const hi = document.getElementById('custom-lock-hi').value;
   send('custom lock ' + lo + ' ' + hi);
-}
-
-// --- Calibration ---
-function updateCalTable(points) {
-  const tbody = document.getElementById('cal-tbody');
-  if (!tbody) return;
-  tbody.innerHTML = '';
-  if (!points || points.length === 0) {
-    tbody.innerHTML = '<tr class="empty"><td colspan="3">No calibration points yet.</td></tr>';
-    window.currentCalPoints = [];
-    return;
-  }
-
-  window.currentCalPoints = [...points];
-
-  for (let i = 0; i < points.length; i++) {
-    const p = points[i];
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${i}</td>
-      <td><input type="number" class="cal-input" step="1" value="${p.adc}" onchange="updateCalPointLocal(${i}, 'adc', this.value)"></td>
-      <td><input type="number" class="cal-input" step="0.1" value="${p.temp.toFixed(1)}" onchange="updateCalPointLocal(${i}, 'temp', this.value)"></td>`;
-    tbody.appendChild(tr);
-  }
-  
-  // Make sure the generated code output is always in sync with the table when it updates
-  generateLocalCode();
-}
-
-function updateCalPointLocal(idx, field, val) {
-  if (window.currentCalPoints && window.currentCalPoints[idx]) {
-    window.currentCalPoints[idx][field] = Number(val);
-    generateLocalCode();
-  }
-}
-
-function addEmptyLocalPoint() {
-  if (!window.currentCalPoints) window.currentCalPoints = [];
-  window.currentCalPoints.push({adc: 0, temp: 0.0});
-  updateCalTable(window.currentCalPoints);
-}
-
-function generateLocalCode() {
-  const codeEl = document.getElementById('cal-code');
-  if (!codeEl) return;
-  const pts = window.currentCalPoints || [];
-  if (pts.length === 0) {
-    codeEl.textContent = "// No points available to generate code.";
-    return;
-  }
-  
-  pts.sort((a,b) => a.adc - b.adc);
-
-  let out = "// ========== HARDCODED CALIBRATION TABLE ==========\n";
-  out += "// Paste this block into src/heater.cpp, then set\n";
-  out += "// #define USE_HARDCODED_CAL_TABLE 1 in include/heater.h\n\n";
-  out += `static const uint8_t hardcodedCalCount = ${pts.length};\n`;
-  out += "static const CalibrationPoint PROGMEM hardcodedCalTable[] = {\n";
-  for (let i=0; i<pts.length; i++) {
-     out += `    {${pts[i].adc}, ${pts[i].temp.toFixed(1)}f}`;
-     if (i < pts.length - 1) out += ",";
-     out += "\n";
-  }
-  out += "};\n";
-  out += "// =================================================\n";
-  
-  codeEl.textContent = out;
-}
-
-function addCalPoint() {
-  const val = document.getElementById('cal-actual').value;
-  if (val === '') {
-    appendLog('[ERR] Enter the actual thermometer reading');
-    return;
-  }
-  send('cal point ' + val);
-  
-  // Explicitly command table refresh from frontend because backend node may not have restarted yet
-  setTimeout(() => send('cal table'), 1000);
-}
-
-function clearCalPoints() {
-  send('cal clear points');
-  setTimeout(() => send('cal table'), 1000);
 }
 
 connect();

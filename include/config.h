@@ -167,15 +167,10 @@
 #define EEPROM_ADDR_LOG        0x80    // 128 bytes — event log
 
 // Calibration storage (placed beyond 0xFF to avoid overlap with state/log)
-#define EEPROM_ADDR_CALIB_BASE  0x100  // Start of calibration block
 #define EEPROM_ADDR_TEMP_OFFSET 0x100  // 4 bytes (float)
 #define EEPROM_ADDR_THERM_R25   0x104  // 4 bytes (float)
 #define EEPROM_ADDR_THERM_BETA  0x108  // 4 bytes (float)
 #define EEPROM_ADDR_PREHEAT_MAX 0x10C  // 1 byte (uint8_t)
-#define EEPROM_ADDR_CAL_COUNT   0x10D  // 1 byte
-#define EEPROM_ADDR_CAL_TABLE   0x110  // 16 points × 4 bytes = 64 bytes
-
-#define CALIB_MAX_POINTS        16
 
 // =============================================================================
 // SERIAL / TERMINAL CONFIGURATION

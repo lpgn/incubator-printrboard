@@ -34,7 +34,6 @@
       <button class="tab-btn active" data-tab="dashboard" onclick="showTab('dashboard')">Dashboard</button>
       <button class="tab-btn" data-tab="incubation" onclick="showTab('incubation')">Incubation</button>
       <button class="tab-btn" data-tab="settings" onclick="showTab('settings')">Settings</button>
-      <button class="tab-btn" data-tab="calibration" onclick="showTab('calibration')">Calibration</button>
       <button class="tab-btn" data-tab="terminal" onclick="showTab('terminal')">Terminal</button>
     </nav>
 
@@ -263,69 +262,6 @@
               <button class="btn btn-secondary" onclick="send('cal reset')">Reset Cal</button>
             </div>
           </div>
-        </div>
-      </section>
-
-      <!-- CALIBRATION -->
-      <section id="tab-calibration" class="tab-panel">
-        <div class="cal-header">
-          <div class="cal-live-card">
-            <div class="label">Live ADC</div>
-            <div class="value" id="cal-adc">--</div>
-          </div>
-          <div class="cal-live-card">
-            <div class="label">Firmware Temp</div>
-            <div class="value" id="cal-firmware-temp">--</div>
-          </div>
-          <div class="cal-live-card">
-            <div class="label">Current Target</div>
-            <div class="value" id="cal-target">--</div>
-          </div>
-          <div class="cal-live-card">
-            <div class="label">Mode</div>
-            <div class="value" id="cal-mode">--</div>
-          </div>
-        </div>
-
-        <div class="panel-card">
-          <h3>Target Control</h3>
-          <div class="form-row">
-            <label>Set target temp (°C)</label>
-            <input type="number" id="cal-target-temp-input" min="30" max="50" step="0.1" value="37.5" />
-            <button class="btn" onclick="send('set temp ' + document.getElementById('cal-target-temp-input').value)">Set Temp</button>
-          </div>
-          <div class="form-row">
-            <label>Or set target ADC</label>
-            <input type="number" id="cal-target-adc-input" min="1" max="1022" step="1" placeholder="e.g. 600" />
-            <button class="btn btn-primary" onclick="send('set adc ' + document.getElementById('cal-target-adc-input').value)">Set ADC</button>
-            <button class="btn btn-secondary" onclick="send('set adc off')">Temp Mode</button>
-          </div>
-        </div>
-
-        <div class="panel-card">
-          <h3>Record Calibration Point</h3>
-          <div class="form-row">
-            <label>Trusted thermometer reads (°C)</label>
-            <input type="number" id="cal-actual" min="10" max="60" step="0.1" placeholder="e.g. 37.6" />
-            <button class="btn btn-success" onclick="addCalPoint()">Add Point</button>
-          </div>
-        </div>
-
-        <div class="panel-card">
-          <div class="table-header">
-            <h3>Calibration Points</h3>
-            <div>
-              <button class="btn" onclick="send('cal table')">Refresh Table</button>
-              <button class="btn btn-primary" onclick="addEmptyLocalPoint()">+ Add Row</button>
-              <button class="btn" onclick="generateLocalCode()">Generate Code</button>
-              <button class="btn btn-danger" onclick="clearCalPoints()">Clear Points</button>
-            </div>
-          </div>
-          <table class="cal-table" id="cal-table">
-            <thead><tr><th>#</th><th>ADC</th><th>Actual Temp (°C)</th></tr></thead>
-            <tbody id="cal-tbody"><tr class="empty"><td colspan="3">No calibration points yet.</td></tr></tbody>
-          </table>
-          <pre class="code-block" id="cal-code"></pre>
         </div>
       </section>
 
