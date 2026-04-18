@@ -504,8 +504,8 @@ void Terminal::cmdSet(const char* args) {
 
     if (strncasecmp(args, "temp ", 5) == 0) {
         float temp = atof(args + 5);
-        if (temp < 30.0f || temp > 50.0f) {
-            Serial.println(F("Temperature must be 30-50C."));
+        if (temp < 10.0f || temp > 60.0f) {
+            Serial.println(F("Temperature must be 10-60C."));
             return;
         }
         _sm->setTempOverride(temp);
@@ -887,7 +887,7 @@ void Terminal::cmdCal(const char* args) {
     }
     else if (strncasecmp(args, "point ", 6) == 0) {
         float actualTemp = atof(args + 6);
-        if (actualTemp < 10.0f || actualTemp > 60.0f) {
+        if (actualTemp < -10.0f || actualTemp > 250.0f) {
             Serial.println(F("Usage: cal point <actual temperature in C>"));
             return;
         }

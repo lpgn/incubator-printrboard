@@ -3,6 +3,15 @@
 #include <math.h>
 #include <EEPROM.h>
 
+#if USE_HARDCODED_CAL_TABLE
+static const uint8_t hardcodedCalCount = 3;
+static const CalibrationPoint PROGMEM hardcodedCalTable[] = {
+    {944, 37.0f},
+    {948, 37.3f},
+    {952, 37.5f}
+};
+#endif
+
 // =============================================================================
 // Heater Implementation
 // =============================================================================
@@ -280,12 +289,3 @@ void Heater::generateTableCode() {
     Serial.println(F("// ================================================="));
 }
 
-#if USE_HARDCODED_CAL_TABLE
-// Paste your generated table here after running `cal generate`
-static const uint8_t hardcodedCalCount = 3;
-static const CalibrationPoint PROGMEM hardcodedCalTable[] = {
-    {944, 37.0f},
-    {948, 37.3f},
-    {952, 37.5f}
-};
-#endif

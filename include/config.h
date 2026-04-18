@@ -16,16 +16,16 @@
 #define TURNER_ENABLE_PIN   19
 
 // --- Heater: Incubator heating element ---
-// Marlin HEATER_BED_PIN 14 (2-pin Molex header above the reset button)
-#define HEATER_PIN          14
+// Marlin HEATER_0_PIN 15 (extruder heater output)
+#define HEATER_PIN          15
 
 // --- Thermistor: Temperature sensor near eggs ---
-// Analog channel 0 = bed thermistor (PF0 / ADC0)
-#define THERMISTOR_PIN      0
-
-// --- Spare thermistor (extruder input, available for future use) ---
 // Analog channel 1 = extruder thermistor (PF1 / ADC1)
-#define THERMISTOR_SPARE_PIN 1
+#define THERMISTOR_PIN      1
+
+// --- Spare thermistor (bed input, available for future use) ---
+// Analog channel 0 = bed thermistor (PF0 / ADC0)
+#define THERMISTOR_SPARE_PIN 0
 
 // --- Fan: Air circulation + cooling + humidity regulation ---
 // Marlin FAN_PIN 16 (small 2-pin Molex FAN header)
@@ -41,9 +41,9 @@
 // Buzzer on PD4 (EXP2 pin, does not conflict with X_DIR)
 #define BUZZER_PIN          4
 
-// --- Spare MOSFET (extruder heater output, unused) ---
-// Marlin HEATER_0_PIN 15 — will stay off in this firmware
-#define SPARE_MOSFET_PIN    15
+// --- Spare MOSFET (heatbed output, unused) ---
+// Marlin HEATER_BED_PIN 14 — will stay off in this firmware
+#define SPARE_MOSFET_PIN    14
 
 // --- SD Card (onboard microSD slot) ---
 // CS is PB6 = Teensyduino pin 26. MOSI/SCK/MISO are hardware SPI (PB2/PB1/PB3).

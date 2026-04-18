@@ -252,8 +252,8 @@ function initChart() {
           type: 'linear',
           display: true,
           position: 'left',
-          suggestedMin: 20,
-          suggestedMax: 45,
+          min: 0,
+          max: 50,
           grid: { color: '#1e293b' }
         },
         y1: {
