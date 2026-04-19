@@ -418,7 +418,7 @@ html, body {
 .code-block::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
 
 /* Terminal */
-.terminal-card { display: flex; flex-direction: column; height: calc(100vh - 200px); min-height: 400px; }
+.terminal-card { display: flex; flex-direction: column; height: auto; max-height: 420px; }
 .terminal-header {
   display: flex;
   align-items: center;
@@ -449,6 +449,7 @@ html, body {
 pre#log {
   flex: 1;
   margin: 0;
+  max-height: 27em;
   overflow-y: auto;
   background: rgba(0,0,0,0.5);
   border-radius: 10px;
