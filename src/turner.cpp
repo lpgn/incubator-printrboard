@@ -9,7 +9,8 @@ EggTurner::EggTurner()
     : _enabled(false), _stepping(false), _direction(false),
       _degreesPerTurn(TURNER_DEFAULT_DEGREES), _turnsPerDay(5),
       _turnsCompleted(0), _stepsRemaining(0), _stepsTotal(0),
-      _stepDelayUs(500), _lastStepTime(0), _accelStep(0), _testTurn(false) {}
+      _stepDelayUs(500), _lastStepTime(0), _accelStep(0), _testTurn(false),
+      _nextTurnTime(0) {}
 
 void EggTurner::begin() {
     pinMode(TURNER_STEP_PIN, OUTPUT);
@@ -37,6 +38,7 @@ void EggTurner::setTurnsPerDay(uint8_t turns) {
     _turnsPerDay = turns;
     if (_turnsPerDay < 1) _turnsPerDay = 1;
     if (_turnsPerDay > 24) _turnsPerDay = 24;
+    _nextTurnTime = (uint32_t)(_turnsCompleted + 1) * getTurnInterval();
 }
 
 void EggTurner::setRPM(float rpm) {
@@ -65,6 +67,7 @@ void EggTurner::update(uint32_t elapsedDaySeconds) {
                     _turnsCompleted++;
                 }
                 _testTurn = false;
+                _nextTurnTime += getTurnInterval();
 
                 // Disable stepper to save power and reduce heat
                 digitalWrite(TURNER_ENABLE_PIN, HIGH);
@@ -85,15 +88,18 @@ void EggTurner::update(uint32_t elapsedDaySeconds) {
     if (_turnsCompleted >= _turnsPerDay) return; // All turns done for today
 
     uint32_t interval = getTurnInterval();
-    uint32_t nextTurnTime = (uint32_t)(_turnsCompleted + 1) * interval;
 
-    if (elapsedDaySeconds >= nextTurnTime) {
-        // Anti-catch-up: if we're more than halfway to the next slot,
-        // count the missed turn as done without physically turning.
-        // This prevents back-to-back "catch-up" rotations when the
-        // clock is set forward or after a long pause/power loss.
-        if (elapsedDaySeconds >= nextTurnTime + (interval / 2)) {
-            _turnsCompleted++;
+    // Skip any missed slots without physically turning.
+    // This prevents back-to-back "catch-up" rotations.
+    while (_nextTurnTime + interval <= elapsedDaySeconds) {
+        _nextTurnTime += interval;
+    }
+
+    if (elapsedDaySeconds >= _nextTurnTime) {
+        // Only turn if we're within a 60-second grace period of the slot start.
+        // If we're later than that, the slot is considered missed.
+        if (elapsedDaySeconds - _nextTurnTime >= 60) {
+            _nextTurnTime += interval;
             return;
         }
         turnNow();
@@ -141,18 +147,18 @@ void EggTurner::setEnabled(bool enabled) {
 
 void EggTurner::resetDayCount() {
     _turnsCompleted = 0;
+    _nextTurnTime = getTurnInterval();
 }
 
 void EggTurner::setTurnsCompleted(uint8_t turns) {
     _turnsCompleted = turns;
+    _nextTurnTime = (uint32_t)(turns + 1) * getTurnInterval();
 }
 
 uint32_t EggTurner::getSecondsUntilNextTurn(uint32_t elapsedDaySeconds) const {
     if (!_enabled || _turnsCompleted >= _turnsPerDay) return 0;
-    uint32_t interval = getTurnInterval();
-    uint32_t nextTurnTime = (uint32_t)(_turnsCompleted + 1) * interval;
-    if (elapsedDaySeconds >= nextTurnTime) return 0;
-    return nextTurnTime - elapsedDaySeconds;
+    if (elapsedDaySeconds >= _nextTurnTime) return 0;
+    return _nextTurnTime - elapsedDaySeconds;
 }
 
 uint32_t EggTurner::degreesToSteps(uint16_t degrees) {

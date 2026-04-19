@@ -62,6 +62,7 @@ private:
     unsigned long _lastStepTime;
     uint32_t _accelStep;    // Current step in acceleration phase
     bool _testTurn;         // True if this is a test turn (don't count)
+    uint32_t _nextTurnTime; // Absolute day-second of next scheduled turn
 
     // Calculate steps needed for the configured degrees
     uint32_t degreesToSteps(uint16_t degrees);
