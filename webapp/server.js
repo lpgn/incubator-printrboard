@@ -100,8 +100,12 @@ function parseStatusLine(line) {
   const stateM   = line.match(/STATE=(\S+)/);
   const uptimeM  = line.match(/UPTIME=(\d+)s/);
 
-  if (!tempM || !adcM || !humidM || !htrM || !fanM || !stateM) {
+  if (!tempM || !adcM || !humidM || !htrM || !fanM) {
     // Not a status line we recognise
+    return null;
+  }
+  // STATE= is only present in [DAY ...] lines, not [IDLE]
+  if (!dayHdr && !idleHdr) {
     return null;
   }
 

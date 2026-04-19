@@ -702,7 +702,14 @@ void Terminal::cmdSet(const char* args) {
         // Set clock to beginning of requested day
         uint32_t elapsed = (uint32_t)(day - 1) * SECONDS_PER_DAY;
         _clock->resumeFrom(elapsed);
-        _turner->resetDayCount();
+        // Sync turn count to elapsed time so we don't trigger catch-up turns
+        {
+            uint32_t daySeconds = elapsed % SECONDS_PER_DAY;
+            uint32_t interval = 79200UL / (uint32_t)_turner->getTurnsPerDay();
+            uint8_t expected = (uint8_t)(daySeconds / interval);
+            if (expected > _turner->getTurnsPerDay()) expected = _turner->getTurnsPerDay();
+            _turner->setTurnsCompleted(expected);
+        }
         Serial.print(F(">> Clock set to day "));
         Serial.print(day);
         Serial.println(F(". Use 'save' to persist."));
@@ -720,7 +727,14 @@ void Terminal::cmdSet(const char* args) {
         }
         uint32_t elapsed = (uint32_t)(hours * 3600.0f);
         _clock->resumeFrom(elapsed);
-        _turner->resetDayCount();
+        // Sync turn count to elapsed time so we don't trigger catch-up turns
+        {
+            uint32_t daySeconds = elapsed % SECONDS_PER_DAY;
+            uint32_t interval = 79200UL / (uint32_t)_turner->getTurnsPerDay();
+            uint8_t expected = (uint8_t)(daySeconds / interval);
+            if (expected > _turner->getTurnsPerDay()) expected = _turner->getTurnsPerDay();
+            _turner->setTurnsCompleted(expected);
+        }
         Serial.print(F(">> Clock set to "));
         Serial.print(hours, 1);
         Serial.print(F("h (day "));

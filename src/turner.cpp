@@ -88,6 +88,14 @@ void EggTurner::update(uint32_t elapsedDaySeconds) {
     uint32_t nextTurnTime = (uint32_t)(_turnsCompleted + 1) * interval;
 
     if (elapsedDaySeconds >= nextTurnTime) {
+        // Anti-catch-up: if we're more than halfway to the next slot,
+        // count the missed turn as done without physically turning.
+        // This prevents back-to-back "catch-up" rotations when the
+        // clock is set forward or after a long pause/power loss.
+        if (elapsedDaySeconds >= nextTurnTime + (interval / 2)) {
+            _turnsCompleted++;
+            return;
+        }
         turnNow();
     }
 }

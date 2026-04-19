@@ -88,6 +88,9 @@ function updateConnection(connected) {
 }
 
 function updateStatus(s) {
+  const debugEl = document.getElementById('debug-last-status');
+  if (debugEl) debugEl.textContent = JSON.stringify(s, null, 2);
+
   if (s.temp !== null && s.temp !== undefined) {
     els.temp.textContent = (s.temp === -999.0) ? 'ERR' : s.temp.toFixed(1);
   }

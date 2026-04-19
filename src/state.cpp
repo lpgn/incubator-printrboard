@@ -65,7 +65,8 @@ bool StateMachine::transitionToDone() {
 }
 
 bool StateMachine::pause() {
-    if (_state == STATE_INCUBATING || _state == STATE_LOCKDOWN || _state == STATE_HATCHING) {
+    if (_state == STATE_PREHEATING || _state == STATE_INCUBATING ||
+        _state == STATE_LOCKDOWN || _state == STATE_HATCHING) {
         _prevState = _state;
         _state = STATE_PAUSED;
         Serial.println(F("[STATE] -> PAUSED"));
