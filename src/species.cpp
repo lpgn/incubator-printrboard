@@ -3,7 +3,20 @@
 // =============================================================================
 // Species presets stored in PROGMEM to save SRAM
 // =============================================================================
-
+//
+// Column layout for each preset row:
+//   name  = species name (max 11 chars)
+//   days  = total incubation period in days
+//   stop  = lockdown day — last day eggs are turned. turning stops here.
+//           eggs sit still from this day until hatch.
+//   temp  = temperature setpoint in Celsius x10 (e.g. 375 = 37.5C)
+//   sL    = setter humidity LOW bound (%) — during turning period
+//   sH    = setter humidity HIGH bound (%) — during turning period
+//   lL    = lockdown humidity LOW bound (%) — after turning stops
+//   lH    = lockdown humidity HIGH bound (%) — after turning stops
+//   turns = egg turns per day (MUST be odd number — even values auto-corrected
+//           down by firmware so eggs don't end up back where they started)
+//
 static const SpeciesPreset PROGMEM presets[SPECIES_COUNT] = {
     // name         days  stop  temp  sL  sH  lL  lH  turns
     {"Chicken",      21,   18,  375,  45, 55, 65, 70,   5},
