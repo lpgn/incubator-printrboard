@@ -6,7 +6,7 @@
 // =============================================================================
 
 EggTurner::EggTurner()
-    : _enabled(false), _stepping(false), _direction(false),
+    : _enabled(false), _stepping(false),
       _degreesPerTurn(TURNER_DEFAULT_DEGREES), _turnsPerDay(5),
       _turnsCompleted(0), _stepsRemaining(0), _stepsTotal(0),
       _stepDelayUs(500), _lastStepTime(0), _accelStep(0), _testTurn(false),
@@ -30,14 +30,16 @@ void EggTurner::begin() {
 }
 
 void EggTurner::setDegreesPerTurn(uint16_t degrees) {
-    _degreesPerTurn = degrees;
-    if (_degreesPerTurn > 360) _degreesPerTurn = 360;
+    // Degrees per turn is hardcoded to 55° for this incubator
+    (void)degrees;
 }
 
 void EggTurner::setTurnsPerDay(uint8_t turns) {
     _turnsPerDay = turns;
     if (_turnsPerDay < 1) _turnsPerDay = 1;
     if (_turnsPerDay > 24) _turnsPerDay = 24;
+    // Force odd number of turns per day so eggs don't end up back where they started
+    if ((_turnsPerDay % 2) == 0) _turnsPerDay--;
     _nextTurnTime = (uint32_t)(_turnsCompleted + 1) * getTurnInterval();
 }
 
@@ -59,9 +61,8 @@ void EggTurner::update(uint32_t elapsedDaySeconds) {
             _accelStep++;
 
             if (_stepsRemaining == 0) {
-                // Turn complete
+                // Turn complete — always same direction, no toggle
                 _stepping = false;
-                _direction = !_direction; // Alternate direction for next turn
 
                 if (!_testTurn) {
                     _turnsCompleted++;
@@ -114,8 +115,8 @@ void EggTurner::turnNow(bool countAsTurn) {
     _accelStep = 0;
     _testTurn = !countAsTurn;
 
-    // Set direction
-    digitalWrite(TURNER_DIR_PIN, _direction ? HIGH : LOW);
+    // Always turn in the same direction (hardcoded LOW)
+    digitalWrite(TURNER_DIR_PIN, LOW);
 
     // Enable stepper driver (active LOW)
     digitalWrite(TURNER_ENABLE_PIN, LOW);
@@ -132,8 +133,7 @@ void EggTurner::turnNow(bool countAsTurn) {
     Serial.print(_turnsPerDay);
     Serial.print(F(" - "));
     Serial.print(_degreesPerTurn);
-    Serial.print(F("deg "));
-    Serial.println(_direction ? F("CW") : F("CCW"));
+    Serial.println(F("deg"));
 }
 
 void EggTurner::setEnabled(bool enabled) {

@@ -145,7 +145,7 @@
 // =============================================================================
 
 #define TURNER_STEPS_PER_REV   3200    // 200 steps × 16 microsteps
-#define TURNER_DEFAULT_DEGREES 90      // Degrees to rotate per turn
+#define TURNER_DEFAULT_DEGREES 55      // Degrees to rotate per turn (hardcoded for 180° net rotation)
 #define TURNER_DEFAULT_RPM     2       // Very slow rotation speed
 #define TURNER_ACCEL_STEPS     200     // Steps for acceleration ramp
 // Direction alternates each turn automatically

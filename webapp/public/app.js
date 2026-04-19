@@ -458,15 +458,8 @@ function sendHumidityRange() {
   send('set humidity ' + lo + ' ' + hi);
 }
 
-function updateTurnStepsLabel() {
-  const deg = Number(document.getElementById('turn-deg').value) || 0;
-  const steps = Math.round(deg * 3200 / 360);
-  document.getElementById('turn-steps').textContent = '(~' + steps + ' steps)';
-}
-
 function sendTurnDeg() {
-  const deg = document.getElementById('turn-deg').value;
-  if (deg !== '') send('set turn deg ' + deg);
+  // Degrees per turn is hardcoded to 55° — nothing to send
 }
 
 function sendTurnRPM() {
@@ -475,8 +468,13 @@ function sendTurnRPM() {
 }
 
 function sendTurnsPerDay() {
-  const turns = document.getElementById('turns-per-day').value;
-  if (turns !== '') send('set turns ' + turns);
+  const turns = parseInt(document.getElementById('turns-per-day').value, 10);
+  if (isNaN(turns)) return;
+  if (turns % 2 === 0) {
+    alert('Turns per day must be an odd number.');
+    return;
+  }
+  send('set turns ' + turns);
 }
 
 function sendPID() {

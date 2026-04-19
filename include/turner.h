@@ -16,6 +16,7 @@ public:
     void begin();
 
     // Configure turning parameters
+    // Degrees per turn is hardcoded to 55 for this incubator
     void setDegreesPerTurn(uint16_t degrees);
     void setTurnsPerDay(uint8_t turns);
     void setRPM(float rpm);
@@ -52,7 +53,6 @@ public:
 private:
     bool _enabled;
     bool _stepping;
-    bool _direction;        // Alternates each turn
     uint16_t _degreesPerTurn;
     uint8_t _turnsPerDay;
     uint8_t _turnsCompleted;

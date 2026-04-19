@@ -181,9 +181,8 @@
             <h4>Egg Turner</h4>
             <div class="form-row">
               <label>Degrees per turn</label>
-              <input type="number" id="turn-deg" min="15" max="360" step="15" value="90" oninput="updateTurnStepsLabel()" />
-              <span id="turn-steps">(~800 steps)</span>
-              <button class="btn" onclick="sendTurnDeg()">Set</button>
+              <input type="number" id="turn-deg" value="55" disabled />
+              <span class="hint">Fixed at 55° (hardcoded)</span>
             </div>
             <div class="form-row">
               <label>Turn RPM</label>
@@ -191,8 +190,8 @@
               <button class="btn" onclick="sendTurnRPM()">Set</button>
             </div>
             <div class="form-row">
-              <label>Turns per day</label>
-              <input type="number" id="turns-per-day" min="1" max="24" value="5" />
+              <label>Turns per day (odd only)</label>
+              <input type="number" id="turns-per-day" min="1" max="24" step="2" value="5" />
               <button class="btn" onclick="sendTurnsPerDay()">Set</button>
             </div>
           </div>

@@ -620,23 +620,19 @@ void Terminal::cmdSet(const char* args) {
             Serial.println(F("Turns must be 1-24."));
             return;
         }
-        _turner->setTurnsPerDay(turns);
-        Serial.print(F(">> Turns per day: "));
-        Serial.println(turns);
-    }
-    else if (strncasecmp(args, "turn deg ", 9) == 0) {
-        uint16_t deg = (uint16_t)atoi(args + 9);
-        if (deg < 15 || deg > 360) {
-            Serial.println(F("Degrees per turn must be 15-360."));
+        if ((turns % 2) == 0) {
+            Serial.println(F("Turns per day must be an odd number."));
             return;
         }
-        _turner->setDegreesPerTurn(deg);
-        uint32_t steps = (uint32_t)deg * TURNER_STEPS_PER_REV / 360UL;
-        Serial.print(F(">> Degrees per turn: "));
-        Serial.print(deg);
-        Serial.print(F(" (~"));
-        Serial.print(steps);
-        Serial.println(F(" steps)"));
+        _turner->setTurnsPerDay(turns);
+        Serial.print(F(">> Turns per day: "));
+        Serial.println(_turner->getTurnsPerDay());
+    }
+    else if (strncasecmp(args, "turn deg ", 9) == 0) {
+        // Degrees per turn is hardcoded to 55° for this incubator
+        Serial.print(F(">> Degrees per turn is fixed at "));
+        Serial.print(_turner->getDegreesPerTurn());
+        Serial.println(F("deg (cannot be changed)."));
     }
     else if (strncasecmp(args, "turn rpm ", 9) == 0) {
         float rpm = atof(args + 9);
