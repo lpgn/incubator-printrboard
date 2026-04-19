@@ -30,8 +30,9 @@ void EggTurner::begin() {
 }
 
 void EggTurner::setDegreesPerTurn(uint16_t degrees) {
-    // Degrees per turn is hardcoded to 55° for this incubator
-    (void)degrees;
+    _degreesPerTurn = degrees;
+    if (_degreesPerTurn < 15) _degreesPerTurn = 15;
+    if (_degreesPerTurn > 360) _degreesPerTurn = 360;
 }
 
 void EggTurner::setTurnsPerDay(uint8_t turns) {

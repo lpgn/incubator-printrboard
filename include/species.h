@@ -30,6 +30,7 @@ struct SpeciesPreset {
     uint8_t humidityLockdownLo; // Lockdown humidity low bound (%)
     uint8_t humidityLockdownHi; // Lockdown humidity high bound (%)
     uint8_t turnsPerDay;        // Number of egg turns per day
+    uint8_t turnDegrees;        // Degrees to rotate per turn
 };
 
 // Get a species preset by ID (reads from PROGMEM)

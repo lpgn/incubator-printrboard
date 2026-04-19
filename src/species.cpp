@@ -16,21 +16,22 @@
 //   lH    = lockdown humidity HIGH bound (%) — after turning stops
 //   turns = egg turns per day (MUST be odd number — even values auto-corrected
 //           down by firmware so eggs don't end up back where they started)
+//   deg   = degrees to rotate per turn (mechanical — depends on egg holder geometry)
 //
 static const SpeciesPreset PROGMEM presets[SPECIES_COUNT] = {
-    // name         days  stop  temp  sL  sH  lL  lH  turns
-    {"Chicken",      21,   18,  375,  45, 55, 65, 70,   5},
-    {"Pigeon",       18,   15,  375,  50, 60, 65, 75,   3},
-    {"Quail",        18,   15,  375,  45, 50, 65, 70,   3},
-    {"Duck",         28,   25,  375,  55, 60, 65, 75,   3},
-    {"Turkey",       28,   25,  375,  50, 60, 65, 70,   5},
-    {"Goose",        30,   27,  375,  50, 55, 70, 75,   5},
-    {"Guinea",       28,   25,  375,  45, 50, 65, 70,   3},
-    {"Custom",        0,    0,  375,  45, 55, 65, 70,   5},
+    // name         days  stop  temp  sL  sH  lL  lH  turns  deg
+    {"Chicken",      21,   18,  375,  45, 55, 65, 70,   5,  55},
+    {"Pigeon",       18,   15,  375,  50, 60, 65, 75,   3,  55},
+    {"Quail",        18,   15,  375,  45, 50, 65, 70,   3,  55},
+    {"Duck",         28,   25,  375,  55, 60, 65, 75,   3,  55},
+    {"Turkey",       28,   25,  375,  50, 60, 65, 70,   5,  55},
+    {"Goose",        30,   27,  375,  50, 55, 70, 75,   5,  55},
+    {"Guinea",       28,   25,  375,  45, 50, 65, 70,   3,  55},
+    {"Custom",        0,    0,  375,  45, 55, 65, 70,   5,  55},
 };
 
 // Custom preset in RAM (user-modifiable)
-static SpeciesPreset customPreset = {"Custom", 21, 18, 375, 45, 55, 65, 70, 5};
+static SpeciesPreset customPreset = {"Custom", 21, 18, 375, 45, 55, 65, 70, 5, 55};
 
 SpeciesPreset getSpeciesPreset(SpeciesID id) {
     if (id >= SPECIES_COUNT) {

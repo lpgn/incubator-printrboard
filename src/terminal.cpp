@@ -359,6 +359,7 @@ void Terminal::cmdStart() {
     _sm->startPreheating(species);
     _clock->start();
     _turner->setTurnsPerDay(p.turnsPerDay);
+    _turner->setDegreesPerTurn(p.turnDegrees);
     _turner->setEnabled(true);
     _pid->reset();
     _pid->setSetpoint(_sm->getTargetTemp());
@@ -629,10 +630,18 @@ void Terminal::cmdSet(const char* args) {
         Serial.println(_turner->getTurnsPerDay());
     }
     else if (strncasecmp(args, "turn deg ", 9) == 0) {
-        // Degrees per turn is hardcoded to 55° for this incubator
-        Serial.print(F(">> Degrees per turn is fixed at "));
-        Serial.print(_turner->getDegreesPerTurn());
-        Serial.println(F("deg (cannot be changed)."));
+        uint16_t deg = (uint16_t)atoi(args + 9);
+        if (deg < 15 || deg > 360) {
+            Serial.println(F("Degrees per turn must be 15-360."));
+            return;
+        }
+        _turner->setDegreesPerTurn(deg);
+        uint32_t steps = (uint32_t)deg * TURNER_STEPS_PER_REV / 360UL;
+        Serial.print(F(">> Degrees per turn: "));
+        Serial.print(deg);
+        Serial.print(F(" (~"));
+        Serial.print(steps);
+        Serial.println(F(" steps)"));
     }
     else if (strncasecmp(args, "turn rpm ", 9) == 0) {
         float rpm = atof(args + 9);
@@ -974,6 +983,18 @@ void Terminal::cmdCustom(const char* args) {
         setCustomPreset(cp);
         Serial.print(F(">> Custom turns/day: "));
         Serial.println(turns);
+    }
+    else if (strncasecmp(args, "turn deg ", 9) == 0) {
+        uint16_t deg = (uint16_t)atoi(args + 9);
+        if (deg < 15 || deg > 360) {
+            Serial.println(F("Degrees per turn must be 15-360."));
+            return;
+        }
+        cp.turnDegrees = (uint8_t)deg;
+        setCustomPreset(cp);
+        Serial.print(F(">> Custom turn degrees: "));
+        Serial.print(deg);
+        Serial.println(F("deg"));
     }
     else {
         // Show current custom preset

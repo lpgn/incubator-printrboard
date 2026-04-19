@@ -185,6 +185,7 @@ void setup() {
 
         // Restore turner state
         turner.setTurnsPerDay(stateMachine.getActivePreset().turnsPerDay);
+        turner.setDegreesPerTurn(stateMachine.getActivePreset().turnDegrees);
         turner.setTurnsCompleted(saved.turnsToday);
 
         // Go to paused state waiting for user to resume
