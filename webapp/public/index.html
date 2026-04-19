@@ -180,9 +180,9 @@
           <div class="setting-card">
             <h4>Egg Turner</h4>
             <div class="form-row">
-              <label>Degrees per turn</label>
+              <label>Angle (from species preset)</label>
               <input type="number" id="turn-deg" value="55" disabled />
-              <span class="hint">Fixed at 55° (hardcoded)</span>
+              <span id="turn-deg-hint" class="hint">Waiting for status...</span>
             </div>
             <div class="form-row">
               <label>Turn RPM</label>
@@ -193,6 +193,10 @@
               <label>Turns per day (odd only)</label>
               <input type="number" id="turns-per-day" min="1" max="24" step="2" value="5" />
               <button class="btn" onclick="sendTurnsPerDay()">Set</button>
+            </div>
+            <div class="form-row">
+              <button class="btn btn-warn" onclick="send('test motor')">↻ Test Turn (no count)</button>
+              <span class="hint">Spins motor once without counting — use to verify angle</span>
             </div>
           </div>
 
@@ -303,8 +307,6 @@
             <div class="btn-grid" style="grid-template-columns: 1fr 1fr; margin-bottom:12px;">
               <button class="btn" onclick="send('status')">Status</button>
               <button class="btn btn-primary" onclick="send('save')">💾 Save to EEPROM</button>
-              <button class="btn" onclick="send('turn')">Turn Eggs Now</button>
-              <button class="btn" onclick="send('test motor')">Test Motor</button>
               <button class="btn" onclick="send('autotune')">🔄 Autotune PID</button>
               <button class="btn" onclick="send('log')">📋 Event Log</button>
               <button class="btn btn-warn" onclick="send('reset')">↺ Software Reset</button>

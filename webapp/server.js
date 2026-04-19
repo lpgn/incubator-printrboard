@@ -98,6 +98,8 @@ function parseStatusLine(line) {
   const htrM     = line.match(/HTR=(\d+)%/);
   const fanM     = line.match(/FAN=(\d+)%/);
   const stateM   = line.match(/STATE=(\S+)/);
+  const turnDegM = line.match(/TURNDEG=(\d+)/);
+  const turnsM   = line.match(/TURNS=(\d+)\/(\d+)/);
   const uptimeM  = line.match(/UPTIME=(\d+)s/);
 
   if (!tempM || !adcM || !humidM || !htrM || !fanM) {
@@ -125,6 +127,9 @@ function parseStatusLine(line) {
       heater: parseInt(htrM[1], 10),
       fan: parseInt(fanM[1], 10),
       state: stateM[1],
+      turnDeg: turnDegM ? parseInt(turnDegM[1], 10) : null,
+      turnsCompleted: turnsM ? parseInt(turnsM[1], 10) : null,
+      turnsPerDay: turnsM ? parseInt(turnsM[2], 10) : null,
       uptime: uptimeM ? parseInt(uptimeM[1], 10) : 0
     };
   } else if (idleHdr) {
@@ -140,6 +145,9 @@ function parseStatusLine(line) {
       heater: parseInt(htrM[1], 10),
       fan: parseInt(fanM[1], 10),
       state: 'IDLE',
+      turnDeg: turnDegM ? parseInt(turnDegM[1], 10) : null,
+      turnsCompleted: turnsM ? parseInt(turnsM[1], 10) : null,
+      turnsPerDay: turnsM ? parseInt(turnsM[2], 10) : null,
       uptime: uptimeM ? parseInt(uptimeM[1], 10) : 0
     };
   }

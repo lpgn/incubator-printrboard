@@ -140,7 +140,13 @@ void Terminal::printStatus() {
         Serial.print((uint16_t)_heater->getOutput() * 100 / 255);
         Serial.print(F("% FAN="));
         Serial.print(_fan->getSpeedPercent());
-        Serial.print(F("% UPTIME="));
+        Serial.print(F("% TURNDEG="));
+        Serial.print(_turner->getDegreesPerTurn());
+        Serial.print(F(" TURNS="));
+        Serial.print(_turner->getTurnsCompleted());
+        Serial.print(F("/"));
+        Serial.print(_turner->getTurnsPerDay());
+        Serial.print(F(" UPTIME="));
         Serial.print(_clock->getElapsedSeconds());
         Serial.println(F("s"));
         return;
@@ -175,6 +181,12 @@ void Terminal::printStatus() {
     Serial.print(_fan->getSpeedPercent());
     Serial.print(F("% STATE="));
     Serial.print(_sm->getStateName());
+    Serial.print(F(" TURNDEG="));
+    Serial.print(_turner->getDegreesPerTurn());
+    Serial.print(F(" TURNS="));
+    Serial.print(_turner->getTurnsCompleted());
+    Serial.print(F("/"));
+    Serial.print(_turner->getTurnsPerDay());
     Serial.print(F(" UPTIME="));
     Serial.print(_clock->getElapsedSeconds());
     Serial.println(F("s"));

@@ -125,6 +125,15 @@ function updateStatus(s) {
     if (headerDay) headerDay.textContent = 'Day -';
   }
 
+  // Update Turner Angle display
+  if (s.turnDeg !== null && s.turnDeg !== undefined) {
+    const degInput = document.getElementById('turn-deg');
+    const degHint = document.getElementById('turn-deg-hint');
+    if (degInput) degInput.value = s.turnDeg;
+    if (degHint) degHint.textContent = s.turnsCompleted !== null ?
+      `Turn ${s.turnsCompleted}/${s.turnsPerDay} today` : 'Live from firmware';
+  }
+
   // Update Uptime Display
   if (s.uptime !== null && s.uptime !== undefined) {
     if (s.state !== 'IDLE') {
