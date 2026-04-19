@@ -1,26 +1,17 @@
 #include "species.h"
+#include "config.h"
+#include <EEPROM.h>
 
 // =============================================================================
-// Species presets stored in PROGMEM to save SRAM
+// Species presets — default values in PROGMEM, editable copies in RAM
 // =============================================================================
-//
-// Column layout for each preset row:
-//   name  = species name (max 11 chars)
-//   days  = total incubation period in days
-//   stop  = lockdown day — last day eggs are turned. turning stops here.
-//           eggs sit still from this day until hatch.
-//   temp  = temperature setpoint in Celsius x10 (e.g. 375 = 37.5C)
-//   sL    = setter humidity LOW bound (%) — during turning period
-//   sH    = setter humidity HIGH bound (%) — during turning period
-//   lL    = lockdown humidity LOW bound (%) — after turning stops
-//   lH    = lockdown humidity HIGH bound (%) — after turning stops
-//   turns = egg turns per day (MUST be odd number — even values auto-corrected
-//           down by firmware so eggs don't end up back where they started)
-//   deg   = degrees to rotate per turn (mechanical — depends on egg holder geometry)
-//
-static const SpeciesPreset PROGMEM presets[SPECIES_COUNT] = {
+
+#define PRESET_EEPROM_MAGIC     0xAB
+#define PRESET_EEPROM_ADDR      0x200
+#define PRESET_SIZE             sizeof(SpeciesPreset)
+
+static const SpeciesPreset PROGMEM defaultPresets[SPECIES_COUNT] = {
     // name         days  stop  temp  sL  sH  lL  lH  turns  deg
-    // deg = motor degrees needed for ~180° egg flip (scales with egg diameter)
     {"Chicken",      21,   18,  375,  45, 55, 65, 70,   5,  55},
     {"Pigeon",       18,   15,  375,  50, 60, 65, 75,   3,  38},
     {"Quail",        18,   15,  375,  45, 50, 65, 70,   3,  35},
@@ -31,29 +22,77 @@ static const SpeciesPreset PROGMEM presets[SPECIES_COUNT] = {
     {"Custom",        0,    0,  375,  45, 55, 65, 70,   5,  55},
 };
 
-// Custom preset in RAM (user-modifiable)
-static SpeciesPreset customPreset = {"Custom", 21, 18, 375, 45, 55, 65, 70, 5, 55};
+// Editable RAM copies of all presets
+static SpeciesPreset ramPresets[SPECIES_COUNT];
+
+static uint8_t calcPresetChecksum() {
+    uint8_t cs = 0;
+    const uint8_t* p = (const uint8_t*)ramPresets;
+    for (uint16_t i = 0; i < sizeof(ramPresets); i++) {
+        cs ^= p[i];
+    }
+    return cs;
+}
+
+void initSpeciesPresets() {
+    uint8_t magic = EEPROM.read(PRESET_EEPROM_ADDR);
+    uint8_t checksum = EEPROM.read(PRESET_EEPROM_ADDR + 1);
+
+    if (magic == PRESET_EEPROM_MAGIC) {
+        // Try loading from EEPROM
+        uint8_t* p = (uint8_t*)ramPresets;
+        for (uint16_t i = 0; i < sizeof(ramPresets); i++) {
+            p[i] = EEPROM.read(PRESET_EEPROM_ADDR + 2 + i);
+        }
+        if (calcPresetChecksum() == checksum) {
+            Serial.println(F("[SPECIES] Loaded presets from EEPROM."));
+            return;
+        }
+    }
+
+    // Load defaults from PROGMEM
+    for (uint8_t i = 0; i < SPECIES_COUNT; i++) {
+        memcpy_P(&ramPresets[i], &defaultPresets[i], sizeof(SpeciesPreset));
+    }
+    Serial.println(F("[SPECIES] Loaded factory defaults."));
+}
+
+void saveSpeciesPresets() {
+    uint8_t* p = (uint8_t*)ramPresets;
+    for (uint16_t i = 0; i < sizeof(ramPresets); i++) {
+        EEPROM.update(PRESET_EEPROM_ADDR + 2 + i, p[i]);
+    }
+    EEPROM.update(PRESET_EEPROM_ADDR + 1, calcPresetChecksum());
+    EEPROM.update(PRESET_EEPROM_ADDR, PRESET_EEPROM_MAGIC);
+    Serial.println(F("[SPECIES] Presets saved to EEPROM."));
+}
+
+void resetSpeciesPresets() {
+    for (uint8_t i = 0; i < SPECIES_COUNT; i++) {
+        memcpy_P(&ramPresets[i], &defaultPresets[i], sizeof(SpeciesPreset));
+    }
+    saveSpeciesPresets();
+    Serial.println(F("[SPECIES] Factory defaults restored."));
+}
 
 SpeciesPreset getSpeciesPreset(SpeciesID id) {
     if (id >= SPECIES_COUNT) {
-        id = SPECIES_CHICKEN; // fallback
+        id = SPECIES_CHICKEN;
     }
-    if (id == SPECIES_CUSTOM) {
-        return customPreset;
+    return ramPresets[id];
+}
+
+SpeciesPreset& getSpeciesPresetRef(SpeciesID id) {
+    if (id >= SPECIES_COUNT) {
+        id = SPECIES_CHICKEN;
     }
-    SpeciesPreset p;
-    memcpy_P(&p, &presets[id], sizeof(SpeciesPreset));
-    return p;
+    return ramPresets[id];
 }
 
 const char* getSpeciesName(SpeciesID id) {
     static char buf[12];
-    if (id == SPECIES_CUSTOM) {
-        strcpy(buf, customPreset.name);
-    } else if (id < SPECIES_COUNT) {
-        SpeciesPreset p;
-        memcpy_P(&p, &presets[id], sizeof(SpeciesPreset));
-        strcpy(buf, p.name);
+    if (id < SPECIES_COUNT) {
+        strcpy(buf, ramPresets[id].name);
     } else {
         strcpy(buf, "Unknown");
     }
@@ -62,33 +101,25 @@ const char* getSpeciesName(SpeciesID id) {
 
 SpeciesID findSpeciesByName(const char* name) {
     for (uint8_t i = 0; i < SPECIES_COUNT; i++) {
-        SpeciesPreset p = getSpeciesPreset((SpeciesID)i);
-        // Case-insensitive compare
-        if (strcasecmp(name, p.name) == 0) {
+        if (strcasecmp(name, ramPresets[i].name) == 0) {
             return (SpeciesID)i;
         }
     }
-    return SPECIES_COUNT; // not found
-}
-
-SpeciesPreset& getCustomPreset() {
-    return customPreset;
+    return SPECIES_COUNT;
 }
 
 void setCustomPreset(const SpeciesPreset& preset) {
-    customPreset = preset;
-    strcpy(customPreset.name, "Custom"); // always keep the name
+    ramPresets[SPECIES_CUSTOM] = preset;
 }
 
 void printSpeciesList() {
     Serial.println(F("Available presets:"));
     for (uint8_t i = 0; i < SPECIES_COUNT; i++) {
-        SpeciesPreset p = getSpeciesPreset((SpeciesID)i);
+        SpeciesPreset p = ramPresets[i];
         Serial.print(F("  "));
         Serial.print(i + 1);
         Serial.print(F(". "));
         Serial.print(p.name);
-        // Pad name to 10 chars
         uint8_t len = strlen(p.name);
         for (uint8_t j = len; j < 10; j++) Serial.print(' ');
         Serial.print(F("- "));
@@ -106,7 +137,8 @@ void printSpeciesList() {
 }
 
 void printSpeciesDetails(SpeciesID id) {
-    SpeciesPreset p = getSpeciesPreset(id);
+    if (id >= SPECIES_COUNT) return;
+    SpeciesPreset p = ramPresets[id];
     Serial.print(F("  Species: "));
     Serial.print(p.name);
     Serial.print(F(" ("));
@@ -122,7 +154,9 @@ void printSpeciesDetails(SpeciesID id) {
     Serial.print(p.humiditySetterHi);
     Serial.print(F("% | Turns/day: "));
     Serial.println(p.turnsPerDay);
-    Serial.print(F("  Lockdown day "));
+    Serial.print(F("  Angle: "));
+    Serial.print(p.turnDegrees);
+    Serial.print(F("deg | Lockdown day "));
     Serial.print(p.turningStopDay);
     Serial.print(F(" (humidity -> "));
     Serial.print(p.humidityLockdownLo);

@@ -91,6 +91,7 @@ private:
     void cmdTest(const char* args);
     void cmdSD();
     void cmdCustom(const char* args);
+    void cmdPreset(const char* args);
     void cmdCal(const char* args);
     void cmdTime(const char* args);
 

@@ -60,6 +60,7 @@ void setup() {
     fan.begin();
     safety.begin();
     rtc.begin();
+    initSpeciesPresets();
 
     pid.begin(PID_DEFAULT_KP, PID_DEFAULT_KI, PID_DEFAULT_KD);
     pid.setOutputLimits(PID_OUTPUT_MIN, PID_OUTPUT_MAX);

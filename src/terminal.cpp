@@ -237,6 +237,8 @@ void Terminal::processCommand(const char* cmd) {
         cmdSD();
     } else if (strncasecmp(cmd, "custom ", 7) == 0) {
         cmdCustom(cmd + 7);
+    } else if (strncasecmp(cmd, "preset ", 7) == 0) {
+        cmdPreset(cmd + 7);
     } else if (strncasecmp(cmd, "cal ", 4) == 0) {
         cmdCal(cmd + 4);
     } else if (strncasecmp(cmd, "time", 4) == 0) {
@@ -298,6 +300,13 @@ void Terminal::cmdHelp() {
     Serial.println(F("  custom humid <lo> <hi>  Set setter humidity range"));
     Serial.println(F("  custom lock <lo> <hi>   Set lockdown humidity range"));
     Serial.println(F("  custom turns <N>     Set turns per day"));
+    Serial.println(F("SPECIES PRESETS:"));
+    Serial.println(F("  preset               List all presets"));
+    Serial.println(F("  preset <name|#>      Show preset details"));
+    Serial.println(F("  preset <name|#> <field> <value>  Edit a preset field"));
+    Serial.println(F("    fields: name, days, stop, temp, humidlo, humidhi,"));
+    Serial.println(F("            locklo, lockhi, turns, deg"));
+    Serial.println(F("  preset reset         Restore all presets to factory defaults"));
     Serial.println();
     Serial.println(F("CALIBRATION:"));
     Serial.println(F("  cal temp <offset>    Add offset to all temp readings (e.g. -0.4)"));
@@ -911,7 +920,7 @@ void Terminal::cmdCustom(const char* args) {
         return;
     }
 
-    SpeciesPreset cp = getCustomPreset();
+    SpeciesPreset& cp = getSpeciesPresetRef(SPECIES_CUSTOM);
 
     if (strncasecmp(args, "days ", 5) == 0) {
         uint8_t days = (uint8_t)atoi(args + 5);
@@ -920,7 +929,7 @@ void Terminal::cmdCustom(const char* args) {
             return;
         }
         cp.totalDays = days;
-        setCustomPreset(cp);
+
         Serial.print(F(">> Custom total days: "));
         Serial.println(days);
     }
@@ -931,7 +940,7 @@ void Terminal::cmdCustom(const char* args) {
             return;
         }
         cp.turningStopDay = day;
-        setCustomPreset(cp);
+
         Serial.print(F(">> Custom turning stop day: "));
         Serial.println(day);
     }
@@ -942,7 +951,7 @@ void Terminal::cmdCustom(const char* args) {
             return;
         }
         cp.tempSetpoint = (uint16_t)(temp * 10.0f);
-        setCustomPreset(cp);
+
         Serial.print(F(">> Custom temp: "));
         Serial.print(temp, 1);
         Serial.println(F("C"));
@@ -959,7 +968,7 @@ void Terminal::cmdCustom(const char* args) {
         }
         cp.humiditySetterLo = lo;
         cp.humiditySetterHi = hi;
-        setCustomPreset(cp);
+
         Serial.print(F(">> Custom setter humidity: "));
         Serial.print(lo);
         Serial.print('-');
@@ -978,7 +987,7 @@ void Terminal::cmdCustom(const char* args) {
         }
         cp.humidityLockdownLo = lo;
         cp.humidityLockdownHi = hi;
-        setCustomPreset(cp);
+
         Serial.print(F(">> Custom lockdown humidity: "));
         Serial.print(lo);
         Serial.print('-');
@@ -992,7 +1001,7 @@ void Terminal::cmdCustom(const char* args) {
             return;
         }
         cp.turnsPerDay = turns;
-        setCustomPreset(cp);
+
         Serial.print(F(">> Custom turns/day: "));
         Serial.println(turns);
     }
@@ -1003,7 +1012,7 @@ void Terminal::cmdCustom(const char* args) {
             return;
         }
         cp.turnDegrees = (uint8_t)deg;
-        setCustomPreset(cp);
+
         Serial.print(F(">> Custom turn degrees: "));
         Serial.print(deg);
         Serial.println(F("deg"));
@@ -1014,6 +1023,167 @@ void Terminal::cmdCustom(const char* args) {
         printSpeciesDetails(SPECIES_CUSTOM);
         Serial.println(F("Use 'custom <param> <value>' to edit. See 'help'."));
     }
+}
+
+void Terminal::cmdPreset(const char* args) {
+    while (*args == ' ') args++;
+
+    if (strcasecmp(args, "reset") == 0) {
+        resetSpeciesPresets();
+        return;
+    }
+
+    if (*args == '\0') {
+        // List all presets in compact format for webapp parsing
+        for (uint8_t i = 0; i < SPECIES_COUNT; i++) {
+            SpeciesPreset p = getSpeciesPreset((SpeciesID)i);
+            Serial.print(F("[PRESET] "));
+            Serial.print(i + 1);
+            Serial.print(' ');
+            Serial.print(p.name);
+            Serial.print(' ');
+            Serial.print(p.totalDays);
+            Serial.print(' ');
+            Serial.print(p.turningStopDay);
+            Serial.print(' ');
+            Serial.print(p.tempSetpoint);
+            Serial.print(' ');
+            Serial.print(p.humiditySetterLo);
+            Serial.print(' ');
+            Serial.print(p.humiditySetterHi);
+            Serial.print(' ');
+            Serial.print(p.humidityLockdownLo);
+            Serial.print(' ');
+            Serial.print(p.humidityLockdownHi);
+            Serial.print(' ');
+            Serial.print(p.turnsPerDay);
+            Serial.print(' ');
+            Serial.println(p.turnDegrees);
+        }
+        return;
+    }
+
+    // Parse species name or number
+    SpeciesID id;
+    if (args[0] >= '1' && args[0] <= '9' && (args[1] == ' ' || args[1] == '\0')) {
+        uint8_t idx = args[0] - '1';
+        if (idx < SPECIES_COUNT) {
+            id = (SpeciesID)idx;
+        } else {
+            Serial.println(F("Invalid preset number."));
+            return;
+        }
+        args++;
+        while (*args == ' ') args++;
+    } else {
+        // Extract word as species name
+        char nameBuf[16];
+        uint8_t ni = 0;
+        while (*args && *args != ' ' && ni < 15) {
+            nameBuf[ni++] = *args++;
+        }
+        nameBuf[ni] = '\0';
+        while (*args == ' ') args++;
+
+        id = findSpeciesByName(nameBuf);
+        if (id >= SPECIES_COUNT) {
+            Serial.print(F("Unknown species: "));
+            Serial.println(nameBuf);
+            return;
+        }
+    }
+
+    if (*args == '\0') {
+        // Show details
+        printSpeciesDetails(id);
+        return;
+    }
+
+    // Edit mode: preset <name> <field> <value>
+    SpeciesPreset& p = getSpeciesPresetRef(id);
+
+    char field[16];
+    uint8_t fi = 0;
+    while (*args && *args != ' ' && fi < 15) {
+        field[fi++] = *args++;
+    }
+    field[fi] = '\0';
+    while (*args == ' ') args++;
+
+    if (strcasecmp(field, "name") == 0) {
+        if (*args == '\0') {
+            Serial.println(F("Usage: preset <name> name <newname>"));
+            return;
+        }
+        strncpy(p.name, args, 11);
+        p.name[11] = '\0';
+        Serial.print(F(">> "));
+        Serial.print(id + 1);
+        Serial.print(F(". name set to \""));
+        Serial.print(p.name);
+        Serial.println(F("\""));
+    }
+    else if (strcasecmp(field, "days") == 0) {
+        uint8_t val = (uint8_t)atoi(args);
+        if (val < 1 || val > 60) { Serial.println(F("Days must be 1-60.")); return; }
+        p.totalDays = val;
+        Serial.print(F(">> days = ")); Serial.println(val);
+    }
+    else if (strcasecmp(field, "stop") == 0) {
+        uint8_t val = (uint8_t)atoi(args);
+        if (val < 1 || val > 60) { Serial.println(F("Stop day must be 1-60.")); return; }
+        p.turningStopDay = val;
+        Serial.print(F(">> stop = ")); Serial.println(val);
+    }
+    else if (strcasecmp(field, "temp") == 0) {
+        float val = atof(args);
+        if (val < 30.0f || val > 42.0f) { Serial.println(F("Temp must be 30-42C.")); return; }
+        p.tempSetpoint = (uint16_t)(val * 10.0f);
+        Serial.print(F(">> temp = ")); Serial.print(val, 1); Serial.println(F("C"));
+    }
+    else if (strcasecmp(field, "humidlo") == 0) {
+        uint8_t val = (uint8_t)atoi(args);
+        if (val < 20 || val > 90) { Serial.println(F("Humidity must be 20-90%.")); return; }
+        p.humiditySetterLo = val;
+        Serial.print(F(">> humidlo = ")); Serial.println(val);
+    }
+    else if (strcasecmp(field, "humidhi") == 0) {
+        uint8_t val = (uint8_t)atoi(args);
+        if (val < 20 || val > 90) { Serial.println(F("Humidity must be 20-90%.")); return; }
+        p.humiditySetterHi = val;
+        Serial.print(F(">> humidhi = ")); Serial.println(val);
+    }
+    else if (strcasecmp(field, "locklo") == 0) {
+        uint8_t val = (uint8_t)atoi(args);
+        if (val < 20 || val > 90) { Serial.println(F("Humidity must be 20-90%.")); return; }
+        p.humidityLockdownLo = val;
+        Serial.print(F(">> locklo = ")); Serial.println(val);
+    }
+    else if (strcasecmp(field, "lockhi") == 0) {
+        uint8_t val = (uint8_t)atoi(args);
+        if (val < 20 || val > 90) { Serial.println(F("Humidity must be 20-90%.")); return; }
+        p.humidityLockdownHi = val;
+        Serial.print(F(">> lockhi = ")); Serial.println(val);
+    }
+    else if (strcasecmp(field, "turns") == 0) {
+        uint8_t val = (uint8_t)atoi(args);
+        if (val < 1 || val > 24) { Serial.println(F("Turns must be 1-24.")); return; }
+        if ((val % 2) == 0) val--;
+        p.turnsPerDay = val;
+        Serial.print(F(">> turns = ")); Serial.println(val);
+    }
+    else if (strcasecmp(field, "deg") == 0) {
+        uint16_t val = (uint16_t)atoi(args);
+        if (val < 15 || val > 360) { Serial.println(F("Degrees must be 15-360.")); return; }
+        p.turnDegrees = (uint8_t)val;
+        Serial.print(F(">> deg = ")); Serial.println(val);
+    }
+    else {
+        Serial.println(F("Unknown field. Use: name, days, stop, temp, humidlo, humidhi, locklo, lockhi, turns, deg"));
+        return;
+    }
+
+    saveSpeciesPresets();
 }
 
 void Terminal::cmdCal(const char* args) {
