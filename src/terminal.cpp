@@ -235,10 +235,10 @@ void Terminal::processCommand(const char* cmd) {
         cmdOverride(cmd + 8);
     } else if (strcasecmp(cmd, "sd") == 0) {
         cmdSD();
-    } else if (strncasecmp(cmd, "custom ", 7) == 0) {
-        cmdCustom(cmd + 7);
-    } else if (strncasecmp(cmd, "preset ", 7) == 0) {
-        cmdPreset(cmd + 7);
+    } else if (strcasecmp(cmd, "custom") == 0 || strncasecmp(cmd, "custom ", 7) == 0) {
+        cmdCustom(cmd + 6);
+    } else if (strcasecmp(cmd, "preset") == 0 || strncasecmp(cmd, "preset ", 7) == 0) {
+        cmdPreset(cmd + 6);
     } else if (strncasecmp(cmd, "cal ", 4) == 0) {
         cmdCal(cmd + 4);
     } else if (strncasecmp(cmd, "time", 4) == 0) {
