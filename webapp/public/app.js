@@ -28,6 +28,7 @@ let lastErrorReason = '';
 let tempChart = null;
 let ws;
 let reconnectTimer;
+let pidHistory = [];  // Local cache for PID auto-analysis
 
 // --- Tabs ---
 function showTab(name) {
@@ -59,6 +60,13 @@ function connect() {
     } else if (data.type === 'history') {
       if (!tempChart) initChart();
       appendHistory(data.history);
+      // Accumulate points for PID analysis (cap same as server: 7200)
+      for (const p of data.history) {
+        pidHistory.push(p);
+      }
+      if (pidHistory.length > 7200) {
+        pidHistory = pidHistory.slice(pidHistory.length - 7200);
+      }
     } else if (data.type === 'log') {
       appendLog(data.line);
     }
@@ -565,7 +573,7 @@ function analyzeLogsForPID() {
   const msgEl = document.getElementById('pid-analysis-msg');
   if (!msgEl) return;
   
-  if (history.length < 60) {
+  if (pidHistory.length < 60) {
     msgEl.textContent = 'Not enough data (needs ~3 mins of logs) ⏳';
     return;
   }
@@ -574,7 +582,7 @@ function analyzeLogsForPID() {
 
   // Grab the last 15 minutes max
   let cutoff = new Date(Date.now() - 15 * 60000);
-  let relevant = history.filter(h => new Date(h.t) >= cutoff);
+  let relevant = pidHistory.filter(h => new Date(h.t) >= cutoff);
   
   // Check if system has a target set
   const target = relevant[relevant.length - 1].targetTemp;

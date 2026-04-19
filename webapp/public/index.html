@@ -24,7 +24,6 @@
       <div class="global-actions">
         <button id="btn-toggle-start" class="btn btn-success" onclick="toggleStart()">▶ Start</button>
         <button id="btn-toggle-pause" class="btn" onclick="togglePause()">⏸ Pause</button>
-        <button class="btn btn-secondary" onclick="send('reset')">↺ Reset</button>
       </div>
     </header>
 
@@ -100,6 +99,10 @@
       <!-- SETTINGS -->
       <section id="tab-settings" class="tab-panel">
         <div class="settings-grid">
+
+          <!-- ==============================================
+               CATEGORY 1: PROFILE & CORE 
+               ============================================== -->
           <div class="setting-card" style="grid-column: 1 / -1;">
             <h3>Select Species</h3>
             <div class="species-grid">
@@ -152,18 +155,6 @@
           </div>
 
           <div class="setting-card">
-            <h3>Quick Commands</h3>
-            <div class="btn-grid" style="grid-template-columns: 1fr 1fr; margin-bottom:12px;">
-              <button class="btn" onclick="send('status')">Status</button>
-              <button class="btn btn-primary" onclick="send('save')">💾 Save to EEPROM</button>
-              <button class="btn" onclick="send('turn')">Turn Eggs Now</button>
-              <button class="btn" onclick="send('test motor')">Test Motor</button>
-              <button class="btn" onclick="send('autotune')">🔄 Autotune PID</button>
-              <button class="btn" onclick="send('log')">📋 Event Log</button>
-            </div>
-          </div>
-
-          <div class="setting-card">
             <h4>Incubation Clock</h4>
             <p class="hint">Adjust after reflash or power loss if auto-recovery is wrong</p>
             <div class="form-row">
@@ -178,54 +169,6 @@
             </div>
             <div class="form-row">
               <button class="btn btn-secondary" onclick="syncRTC()">🕐 Sync RTC from Browser</button>
-            </div>
-          </div>
-          <div class="setting-card">
-            <h4>Temperature</h4>
-            <div class="form-row">
-              <label>Target temp (°C)</label>
-              <input type="number" id="target-temp" min="30" max="50" step="0.1" value="37.5" />
-              <button class="btn" onclick="sendTargetTemp()">Set</button>
-            </div>
-            <div class="form-row">
-              <label>Safety max temp (°C)</label>
-              <input type="range" id="maxtemp-range" min="35" max="50" step="0.5" value="40" oninput="document.getElementById('maxtemp-val').textContent = parseFloat(this.value).toFixed(1) + '°C'" />
-              <span id="maxtemp-val">40.0°C</span>
-              <button class="btn" onclick="sendMaxTemp()">Set</button>
-            </div>
-          </div>
-
-          <div class="setting-card">
-            <h4>ADC Target Mode</h4>
-            <p class="hint">Use for precise calibration. Heater targets a raw ADC value instead of temperature.</p>
-            <div class="form-row">
-              <label>Target ADC</label>
-              <input type="number" id="target-adc" min="1" max="1022" step="1" placeholder="e.g. 600" />
-              <button class="btn btn-primary" onclick="sendAdcTarget()">Set ADC Target</button>
-              <button class="btn btn-secondary" onclick="send('set adc off')">Back to Temp Mode</button>
-            </div>
-            <div class="form-row">
-              <span id="adc-mode-badge" class="badge">Temp Mode</span>
-            </div>
-          </div>
-
-          <div class="setting-card">
-            <h4>Humidity</h4>
-            <div class="form-row">
-              <label>Range (%)</label>
-              <input type="number" id="humid-lo" min="20" max="90" step="1" value="45" />
-              <span>–</span>
-              <input type="number" id="humid-hi" min="20" max="90" step="1" value="55" />
-              <button class="btn" onclick="sendHumidityRange()">Set</button>
-            </div>
-          </div>
-
-          <div class="setting-card">
-            <h4>Fan</h4>
-            <div class="form-row">
-              <button class="btn" onclick="send('test fan off')">Fan Off</button>
-              <button class="btn" onclick="send('test fan on')">Fan On</button>
-              <button class="btn" onclick="send('test fan auto')">Fan Auto</button>
             </div>
           </div>
 
@@ -249,6 +192,47 @@
             </div>
           </div>
 
+          <!-- ==============================================
+               CATEGORY 2: ENVIRONMENTAL RULES
+               ============================================== -->
+          <div class="setting-card">
+            <h4>Temperature</h4>
+            <div class="form-row">
+              <label>Target temp (°C)</label>
+              <input type="number" id="target-temp" min="30" max="50" step="0.1" value="37.5" />
+              <button class="btn" onclick="sendTargetTemp()">Set</button>
+            </div>
+            <div class="form-row">
+              <label>Safety max temp (°C)</label>
+              <input type="range" id="maxtemp-range" min="35" max="50" step="0.5" value="40" oninput="document.getElementById('maxtemp-val').textContent = parseFloat(this.value).toFixed(1) + '°C'" />
+              <span id="maxtemp-val">40.0°C</span>
+              <button class="btn" onclick="sendMaxTemp()">Set</button>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <h4>Humidity</h4>
+            <div class="form-row">
+              <label>Range (%)</label>
+              <input type="number" id="humid-lo" min="20" max="90" step="1" value="45" />
+              <span>–</span>
+              <input type="number" id="humid-hi" min="20" max="90" step="1" value="55" />
+              <button class="btn" onclick="sendHumidityRange()">Set</button>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <h4>Fan</h4>
+            <div class="form-row">
+              <button class="btn" onclick="send('test fan off')">Fan Off</button>
+              <button class="btn" onclick="send('test fan on')">Fan On</button>
+              <button class="btn" onclick="send('test fan auto')">Fan Auto</button>
+            </div>
+          </div>
+
+          <!-- ==============================================
+               CATEGORY 3: TUNING & CALIBRATION 
+               ============================================== -->
           <div class="setting-card">
             <h4>PID Tuning</h4>
             <div class="form-row pid-row">
@@ -283,6 +267,20 @@
           </div>
 
           <div class="setting-card">
+            <h4>ADC Target Mode</h4>
+            <p class="hint">Use for precise calibration. Heater targets a raw ADC value instead of temperature.</p>
+            <div class="form-row">
+              <label>Target ADC</label>
+              <input type="number" id="target-adc" min="1" max="1022" step="1" placeholder="e.g. 600" />
+              <button class="btn btn-primary" onclick="sendAdcTarget()">Set ADC Target</button>
+              <button class="btn btn-secondary" onclick="send('set adc off')">Back to Temp Mode</button>
+            </div>
+            <div class="form-row">
+              <span id="adc-mode-badge" class="badge">Temp Mode</span>
+            </div>
+          </div>
+
+          <div class="setting-card">
             <h4>Thermistor</h4>
             <div class="form-row">
               <label>R25 (Ω)</label>
@@ -290,6 +288,22 @@
               <label>Beta</label>
               <input type="number" id="therm-beta" step="10" placeholder="e.g. 3950" />
               <button class="btn" onclick="sendThermistor()">Set</button>
+            </div>
+          </div>
+
+          <!-- ==============================================
+               CATEGORY 4: SYSTEM TOOLS 
+               ============================================== -->
+          <div class="setting-card">
+            <h3>Quick Commands & System</h3>
+            <div class="btn-grid" style="grid-template-columns: 1fr 1fr; margin-bottom:12px;">
+              <button class="btn" onclick="send('status')">Status</button>
+              <button class="btn btn-primary" onclick="send('save')">💾 Save to EEPROM</button>
+              <button class="btn" onclick="send('turn')">Turn Eggs Now</button>
+              <button class="btn" onclick="send('test motor')">Test Motor</button>
+              <button class="btn" onclick="send('autotune')">🔄 Autotune PID</button>
+              <button class="btn" onclick="send('log')">📋 Event Log</button>
+              <button class="btn btn-warn" onclick="send('reset')">↺ Software Reset</button>
             </div>
           </div>
 

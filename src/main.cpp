@@ -160,7 +160,7 @@ void setup() {
         stateMachine.setSpecies((SpeciesID)saved.speciesID);
 
         // Prepare for resume — go to PAUSED state with previous state saved
-        stateMachine.setPreviousState((IncubatorState)saved.state);
+        stateMachine.forcePaused((IncubatorState)saved.state);
 
         // Pre-load the clock with saved elapsed time
         uint32_t resumedElapsed = saved.elapsedSeconds;

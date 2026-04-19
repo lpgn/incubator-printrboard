@@ -27,6 +27,7 @@ let lastStatus = {
   fan: null,
   state: null,
   targetTemp: null,
+  uptime: 0,
   connected: false
 };
 
@@ -85,46 +86,57 @@ function parseAlarms(line) {
 function parseStatusLine(line) {
   let result = null;
 
-  // Match: [DAY 01/21] T=21.8C ADC=642 TARGET=37.5C H=0% DHT=22.1C HTR=0% FAN=29% STATE=ERROR
-  // or:   [DAY 01/21] T=21.8C ADC=642 ADCTARGET=580 H=0% DHT=22.1C HTR=0% FAN=29% STATE=ERROR UPTIME=1234s
-  const dayMatch = line.match(/\[DAY\s+(\d+)\/(\d+)\]\s+T=([\d.-]+)C\s+ADC=(\d+)\s+(?:TARGET=([\d.]+)C|ADCTARGET=(\d+))\s+H=(\d+)%\s+(?:DHT=([\d.-]+)C\s+)?HTR=(\d+)%\s+FAN=(\d+)%\s+STATE=(\S+)\s+UPTIME=(\d+)s/);
-  if (dayMatch) {
-    const adcTarget = dayMatch[6] ? parseInt(dayMatch[6], 10) : null;
-    lastStatus.targetTemp = adcTarget ? null : parseFloat(dayMatch[5]);
-    result = {
-      type: 'status',
-      day: parseInt(dayMatch[1], 10),
-      totalDays: parseInt(dayMatch[2], 10),
-      temp: parseFloat(dayMatch[3]),
-      adc: parseInt(dayMatch[4], 10),
-      adcTarget: adcTarget,
-      humidity: parseInt(dayMatch[7], 10),
-      dhtTemp: dayMatch[8] ? parseFloat(dayMatch[8]) : null,
-      heater: parseInt(dayMatch[9], 10),
-      fan: parseInt(dayMatch[10], 10),
-      state: dayMatch[11],
-      uptime: parseInt(dayMatch[12], 10)
-    };
+  // --- Robust field-by-field extraction ---
+  const dayHdr   = line.match(/\[DAY\s+(\d+)\/(\d+)\]/);
+  const idleHdr  = line.match(/\[IDLE\]/);
+  const tempM    = line.match(/T=([\d.-]+)C/);
+  const adcM     = line.match(/ADC=(\d+)/);
+  const targetM  = line.match(/TARGET=([\d.]+)C/);
+  const adcTarM  = line.match(/ADCTARGET=(\d+)/);
+  const humidM   = line.match(/H=(\d+)%/);
+  const dhtM     = line.match(/DHT=([\d.-]+)C/);
+  const htrM     = line.match(/HTR=(\d+)%/);
+  const fanM     = line.match(/FAN=(\d+)%/);
+  const stateM   = line.match(/STATE=(\S+)/);
+  const uptimeM  = line.match(/UPTIME=(\d+)s/);
+
+  if (!tempM || !adcM || !humidM || !htrM || !fanM || !stateM) {
+    // Not a status line we recognise
+    return null;
   }
 
-  // or:   [IDLE] T=21.8C ADC=642 ADCTARGET=580 H=0% DHT=22.1C HTR=0% FAN=0% UPTIME=0s
-  const idleMatch = line.match(/\[IDLE\]\s+T=([\d.-]+)C\s+ADC=(\d+)\s+(?:TARGET=([\d.]+)C|ADCTARGET=(\d+))\s+H=(\d+)%\s+(?:DHT=([\d.-]+)C\s+)?HTR=(\d+)%\s+FAN=(\d+)%\s+UPTIME=(\d+)s/);
-  if (idleMatch) {
-    const adcTarget = idleMatch[4] ? parseInt(idleMatch[4], 10) : null;
-    lastStatus.targetTemp = adcTarget ? null : parseFloat(idleMatch[3]);
+  const adcTarget = adcTarM ? parseInt(adcTarM[1], 10) : null;
+  if (targetM) lastStatus.targetTemp = parseFloat(targetM[1]);
+
+  if (dayHdr) {
+    result = {
+      type: 'status',
+      day: parseInt(dayHdr[1], 10),
+      totalDays: parseInt(dayHdr[2], 10),
+      temp: parseFloat(tempM[1]),
+      adc: parseInt(adcM[1], 10),
+      adcTarget: adcTarget,
+      humidity: parseInt(humidM[1], 10),
+      dhtTemp: dhtM ? parseFloat(dhtM[1]) : null,
+      heater: parseInt(htrM[1], 10),
+      fan: parseInt(fanM[1], 10),
+      state: stateM[1],
+      uptime: uptimeM ? parseInt(uptimeM[1], 10) : 0
+    };
+  } else if (idleHdr) {
     result = {
       type: 'status',
       day: 0,
       totalDays: 0,
-      temp: parseFloat(idleMatch[1]),
-      adc: parseInt(idleMatch[2], 10),
+      temp: parseFloat(tempM[1]),
+      adc: parseInt(adcM[1], 10),
       adcTarget: adcTarget,
-      humidity: parseInt(idleMatch[5], 10),
-      dhtTemp: idleMatch[6] ? parseFloat(idleMatch[6]) : null,
-      heater: parseInt(idleMatch[7], 10),
-      fan: parseInt(idleMatch[8], 10),
+      humidity: parseInt(humidM[1], 10),
+      dhtTemp: dhtM ? parseFloat(dhtM[1]) : null,
+      heater: parseInt(htrM[1], 10),
+      fan: parseInt(fanM[1], 10),
       state: 'IDLE',
-      uptime: parseInt(idleMatch[9], 10)
+      uptime: uptimeM ? parseInt(uptimeM[1], 10) : 0
     };
   }
 
@@ -144,7 +156,10 @@ function parseStatusLine(line) {
     history.push(point);
     if (history.length > MAX_HISTORY) history.shift();
     broadcast({ type: 'history', history: [point] });
-    console.log('Parsed status:', result.state, 'adc=', result.adc, 'temp=', result.temp);
+    console.log('Parsed status:', result.state, 'adc=', result.adc, 'temp=', result.temp, 'uptime=', result.uptime);
+  } else {
+    // Debug: we had some fields but not the header
+    console.log('Unrecognised status line:', line);
   }
 
   return result;
@@ -199,6 +214,12 @@ function openSerial() {
       if (status) {
         Object.assign(lastStatus, status);
         broadcast(status);
+      }
+
+      // Fallback: always hunt for standalone uptime in any line
+      const uptimeFallback = raw.match(/UPTIME=(\d+)s/);
+      if (uptimeFallback) {
+        lastStatus.uptime = parseInt(uptimeFallback[1], 10);
       }
 
       broadcast({ type: 'log', line: raw });

@@ -76,6 +76,9 @@ public:
     IncubatorState getPreviousState() const { return _prevState; }
     void setPreviousState(IncubatorState s) { _prevState = s; }
 
+    // Force PAUSED state for EEPROM recovery (bypasses normal transition guards)
+    void forcePaused(IncubatorState prevState) { _prevState = prevState; _state = STATE_PAUSED; }
+
     // Is turning allowed in current state?
     bool isTurningAllowed() const;
 
