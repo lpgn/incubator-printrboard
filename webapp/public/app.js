@@ -510,18 +510,6 @@ function sendCalTemp() {
   send('cal temp actual ' + val);
 }
 
-function updateCustomHumid() {
-  const lo = document.getElementById('custom-humid-lo').value;
-  const hi = document.getElementById('custom-humid-hi').value;
-  send('custom humid ' + lo + ' ' + hi);
-}
-
-function updateCustomLock() {
-  const lo = document.getElementById('custom-lock-lo').value;
-  const hi = document.getElementById('custom-lock-hi').value;
-  send('custom lock ' + lo + ' ' + hi);
-}
-
 function toggleStart() {
   if (window._currentStartAction === 'stop') {
     send('stop');
@@ -774,7 +762,7 @@ function savePreset(idx) {
   if (name !== p.name) send(`preset ${presetName} name ${name}`);
   if (days !== p.days) send(`preset ${presetName} days ${days}`);
   if (stop !== p.stop) send(`preset ${presetName} stop ${stop}`);
-  if (temp !== p.temp) send(`preset ${presetName} temp ${temp}`);
+  if (temp !== p.temp) send(`preset ${presetName} temp ${(temp / 10).toFixed(1)}`);
   if (humidLo !== p.humidLo) send(`preset ${presetName} humidlo ${humidLo}`);
   if (humidHi !== p.humidHi) send(`preset ${presetName} humidhi ${humidHi}`);
   if (lockLo !== p.lockLo) send(`preset ${presetName} locklo ${lockLo}`);

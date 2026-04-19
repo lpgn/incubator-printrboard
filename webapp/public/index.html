@@ -122,47 +122,6 @@
             </div>
           </div>
 
-          <div class="setting-card">
-            <h3>Custom Species</h3>
-            <p class="hint">Only active when Custom is selected</p>
-            <div class="form-row">
-              <label>Total days</label>
-              <input type="number" id="custom-days" min="1" max="60" value="21" onchange="send('custom days ' + this.value)" />
-            </div>
-            <div class="form-row">
-              <label>Lockdown day</label>
-              <input type="number" id="custom-stop" min="1" max="60" value="18" onchange="send('custom stop ' + this.value)" />
-            </div>
-            <div class="form-row">
-              <label>Temp setpoint (°C)</label>
-              <input type="number" id="custom-temp" min="30" max="42" step="0.1" value="37.5" onchange="send('custom temp ' + this.value)" />
-            </div>
-            <div class="form-row">
-              <label>Setter humidity low</label>
-              <input type="number" id="custom-humid-lo" min="20" max="90" value="45" onchange="updateCustomHumid()" />
-            </div>
-            <div class="form-row">
-              <label>Setter humidity high</label>
-              <input type="number" id="custom-humid-hi" min="20" max="90" value="55" onchange="updateCustomHumid()" />
-            </div>
-            <div class="form-row">
-              <label>Lockdown humidity low</label>
-              <input type="number" id="custom-lock-lo" min="20" max="90" value="65" onchange="updateCustomLock()" />
-            </div>
-            <div class="form-row">
-              <label>Lockdown humidity high</label>
-              <input type="number" id="custom-lock-hi" min="20" max="90" value="70" onchange="updateCustomLock()" />
-            </div>
-            <div class="form-row">
-              <label>Turns per day</label>
-              <input type="number" id="custom-turns" min="1" max="24" step="2" value="5" onchange="send('custom turns ' + this.value)" />
-            </div>
-            <div class="form-row">
-              <label>Turn angle (°)</label>
-              <input type="number" id="custom-turn-deg" min="15" max="360" value="55" onchange="send('custom turn deg ' + this.value)" />
-            </div>
-          </div>
-
           <div class="setting-card" style="grid-column: 1 / -1;">
             <div class="table-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
               <h3>Species Presets</h3>
