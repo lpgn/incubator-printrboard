@@ -8,8 +8,8 @@ if errorlevel 1 (
     echo [FLASH] Warning: could not read EEPROM. Continuing anyway.
 )
 
-echo [FLASH] Erasing and flashing firmware...
-tools\avrdude\avrdude.exe -C tools\avrdude\avrdude.conf -c usbasp -B 10 -p at90usb1286 -e -U flash:w:%1:i
+echo [FLASH] Erasing and flashing firmware (fast ISP)...
+tools\avrdude\avrdude.exe -C tools\avrdude\avrdude.conf -c usbasp -B 1 -p at90usb1286 -e -U flash:w:%1:i
 if errorlevel 1 exit /b 1
 
 if exist "%EEPROM_BACKUP%" (
