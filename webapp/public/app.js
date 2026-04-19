@@ -85,8 +85,8 @@ function updateStatus(s) {
   }
   if (s.humidity !== null && s.humidity !== undefined) els.humidity.textContent = s.humidity;
   if (s.dhtTemp !== null && s.dhtTemp !== undefined) els.dhtTemp.textContent = s.dhtTemp.toFixed(1);
-  if (s.heater !== null && s.heater !== undefined) els.heater.textContent = s.heater > 0 ? 'ON' : 'OFF';
-  if (s.fan !== null && s.fan !== undefined) els.fan.textContent = s.fan > 0 ? 'ON' : 'OFF';
+  if (s.heater !== null && s.heater !== undefined) els.heater.textContent = s.heater + '%';
+  if (s.fan !== null && s.fan !== undefined) els.fan.textContent = s.fan + '%';
 
   if (s.state) {
     els.state.textContent = s.state;
@@ -491,13 +491,63 @@ function updateCustomLock() {
 }
 
 function toggleStart() {
-  if (window._currentStartAction) send(window._currentStartAction);
-  else send('start');
+  if (window._currentStartAction === 'stop') {
+    send('stop');
+  } else {
+    // Auto-sync RTC from browser time before starting incubation
+    syncRTC();
+    // Small delay so RTC command is processed before start
+    setTimeout(() => send('start'), 300);
+  }
 }
 
 function togglePause() {
   if (window._currentPauseAction) send(window._currentPauseAction);
   else send('pause');
+}
+
+function syncRTC() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const mo = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  const h = String(now.getHours()).padStart(2, '0');
+  const mi = String(now.getMinutes()).padStart(2, '0');
+  const s = String(now.getSeconds()).padStart(2, '0');
+  send(`time set ${y} ${mo} ${d} ${h} ${mi} ${s}`);
+}
+
+function sendSetDay() {
+  const val = document.getElementById('set-day').value;
+  if (val !== '') {
+    send('set day ' + val);
+    // Auto-save after setting day
+    setTimeout(() => send('save'), 500);
+  }
+}
+
+function sendSetElapsed() {
+  const val = document.getElementById('set-elapsed').value;
+  if (val !== '') {
+    send('set elapsed ' + val);
+    // Auto-save after setting elapsed
+    setTimeout(() => send('save'), 500);
+  }
+}
+
+function sendThermistor() {
+  const r25 = document.getElementById('therm-r25').value;
+  const beta = document.getElementById('therm-beta').value;
+  if (r25 === '' || beta === '') {
+    appendLog('[ERR] Enter both R25 and Beta values');
+    return;
+  }
+  send('set thermistor ' + r25 + ' ' + beta);
+}
+
+function sendTestHeater() {
+  const pwm = document.getElementById('test-heater-pwm').value;
+  send('test heater ' + pwm);
 }
 
 document.addEventListener('DOMContentLoaded', () => {

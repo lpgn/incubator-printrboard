@@ -76,11 +76,12 @@
 // =============================================================================
 
 #define PID_SAMPLE_MS       1000       // PID update interval (ms)
-// Conservative defaults for a fast, high-inertia heater.
-// Previous defaults (4/0.2/1) caused massive overshoot on preheat.
-#define PID_DEFAULT_KP      94.35f
-#define PID_DEFAULT_KI      0.323f
-#define PID_DEFAULT_KD      6893.71f
+// Tuned from live incubation data (2026-04-19).
+// ZN autotune Kd=6893 was far too aggressive (bang-bang derivative).
+// These values yield ±0.3°C ripple with smooth heater output.
+#define PID_DEFAULT_KP      40.0f
+#define PID_DEFAULT_KI      0.5f
+#define PID_DEFAULT_KD      800.0f
 #define PID_OUTPUT_MIN      0
 #define PID_OUTPUT_MAX      255
 #define PID_PREHEAT_MAX     255        // Max PWM during preheat (100%)
@@ -115,11 +116,18 @@
 
 // =============================================================================
 // FAN CONFIGURATION
+// Fan is used ONLY to reduce humidity by exhausting moist air.
+// Speed is PWM-proportional to humidity excess above midpoint,
+// throttled when temperature is below setpoint to minimise heat loss.
 // =============================================================================
 
-#define FAN_BASE_SPEED      255        // Full ON for circulation
-#define FAN_MIN_SPEED       0          // Fan is binary: OFF
-#define FAN_MAX_SPEED       255        // Fan is binary: ON
+#define FAN_MIN_SPEED       0          // Off
+#define FAN_MAX_SPEED       255        // Full speed
+#define FAN_MIN_ACTIVE      80         // Minimum PWM for fan motor to spin (~31%)
+#define FAN_HUMID_DEADBAND  3.0f       // Humidity must exceed midpoint by this % before fan starts
+#define FAN_HUMID_FULL_RANGE 15.0f     // Fan reaches max speed at midpoint + this %
+#define FAN_TEMP_PROTECT_LO 0.5f       // Begin throttling fan when temp this far below setpoint
+#define FAN_TEMP_PROTECT_HI 1.5f       // Stop fan entirely when temp this far below setpoint
 
 #define HEATER_SLOW_PWM_PERIOD_MS  2000  // 2-second slow PWM cycle (0.5Hz) — eliminates audible MOSFET whine
 

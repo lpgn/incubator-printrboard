@@ -155,9 +155,29 @@
             <h3>Quick Commands</h3>
             <div class="btn-grid" style="grid-template-columns: 1fr 1fr; margin-bottom:12px;">
               <button class="btn" onclick="send('status')">Status</button>
+              <button class="btn btn-primary" onclick="send('save')">💾 Save to EEPROM</button>
               <button class="btn" onclick="send('turn')">Turn Eggs Now</button>
-              <button class="btn" onclick="send('autotune')">🔄 Autotune PID</button>
               <button class="btn" onclick="send('test motor')">Test Motor</button>
+              <button class="btn" onclick="send('autotune')">🔄 Autotune PID</button>
+              <button class="btn" onclick="send('log')">📋 Event Log</button>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <h4>Incubation Clock</h4>
+            <p class="hint">Adjust after reflash or power loss if auto-recovery is wrong</p>
+            <div class="form-row">
+              <label>Set to day</label>
+              <input type="number" id="set-day" min="1" max="60" step="1" value="1" />
+              <button class="btn" onclick="sendSetDay()">Set Day</button>
+            </div>
+            <div class="form-row">
+              <label>Set elapsed hours</label>
+              <input type="number" id="set-elapsed" min="0" max="1440" step="0.5" value="0" />
+              <button class="btn" onclick="sendSetElapsed()">Set Elapsed</button>
+            </div>
+            <div class="form-row">
+              <button class="btn btn-secondary" onclick="syncRTC()">🕐 Sync RTC from Browser</button>
             </div>
           </div>
           <div class="setting-card">
@@ -233,11 +253,11 @@
             <h4>PID Tuning</h4>
             <div class="form-row pid-row">
               <label>Kp</label>
-              <input type="number" id="pid-kp" step="0.01" value="84.11" />
+              <input type="number" id="pid-kp" step="0.01" value="40.0" />
               <label>Ki</label>
-              <input type="number" id="pid-ki" step="0.001" value="0.618" />
+              <input type="number" id="pid-ki" step="0.001" value="0.500" />
               <label>Kd</label>
-              <input type="number" id="pid-kd" step="0.01" value="2859.89" />
+              <input type="number" id="pid-kd" step="0.01" value="800.0" />
               <button class="btn" onclick="sendPID()">Set PID</button>
             </div>
           </div>
@@ -255,6 +275,34 @@
               <input type="number" id="trusted-temp" step="0.1" placeholder="e.g. 18.0" />
               <button class="btn" onclick="sendCalTemp()">Calibrate Offset</button>
               <button class="btn btn-secondary" onclick="send('cal reset')">Reset Cal</button>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <h4>Thermistor</h4>
+            <div class="form-row">
+              <label>R25 (Ω)</label>
+              <input type="number" id="therm-r25" step="100" placeholder="e.g. 100000" />
+              <label>Beta</label>
+              <input type="number" id="therm-beta" step="10" placeholder="e.g. 3950" />
+              <button class="btn" onclick="sendThermistor()">Set</button>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <h4>Hardware Diagnostics</h4>
+            <div class="btn-grid" style="grid-template-columns: 1fr 1fr 1fr; margin-bottom:12px;">
+              <button class="btn" onclick="send('test temp')">🌡️ Test Temp</button>
+              <button class="btn" onclick="send('test dht')">💧 Test DHT</button>
+              <button class="btn" onclick="send('sd')">💾 SD Status</button>
+              <button class="btn" onclick="send('time')">🕐 RTC Time</button>
+            </div>
+            <div class="form-row">
+              <label>Force heater PWM</label>
+              <input type="range" id="test-heater-pwm" min="0" max="255" value="0" oninput="document.getElementById('test-heater-val').textContent = this.value" />
+              <span id="test-heater-val">0</span>
+              <button class="btn btn-warn" onclick="sendTestHeater()">Set</button>
+              <button class="btn btn-secondary" onclick="send('test heater -1')">Auto</button>
             </div>
           </div>
         </div>
@@ -275,6 +323,6 @@
       </section>
     </main>
   </div>
-  <script src="app.js?v=6"></script>
+  <script src="app.js?v=7"></script>
 </body>
 </html>

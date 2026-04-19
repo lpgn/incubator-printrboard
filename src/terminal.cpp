@@ -2,6 +2,7 @@
 #include "config.h"
 #include "sdlogger.h"
 #include "rtc.h"
+#include "state.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -199,6 +200,8 @@ void Terminal::processCommand(const char* cmd) {
         cmdResume();
     } else if (strcasecmp(cmd, "status") == 0) {
         cmdStatus();
+    } else if (strcasecmp(cmd, "save") == 0) {
+        cmdSave();
     } else if (strncasecmp(cmd, "set ", 4) == 0) {
         cmdSet(cmd + 4);
     } else if (strcasecmp(cmd, "log") == 0) {
@@ -239,6 +242,7 @@ void Terminal::cmdHelp() {
     Serial.println(F("  pause                Pause incubation"));
     Serial.println(F("  resume               Resume incubation / power recovery"));
     Serial.println(F("  status               Show detailed status"));
+    Serial.println(F("  save                 Force save state to EEPROM now"));
     Serial.println(F("  set temp <C>         Override temperature setpoint"));
     Serial.println(F("  set adc <value>      Override PID target to raw ADC value (0-1023)"));
     Serial.println(F("  set adc off          Disable ADC target mode, return to temp"));
@@ -248,6 +252,8 @@ void Terminal::cmdHelp() {
     Serial.println(F("  set turns <N>        Set turns per day"));
     Serial.println(F("  set fan <min> <max>  Set fan speed range (0-255)"));
     Serial.println(F("  set preheat <pwm>    Max heater PWM during preheat (0-255)"));
+    Serial.println(F("  set day <N>          Set incubation to start of day N"));
+    Serial.println(F("  set elapsed <hours>  Set total elapsed hours"));
     Serial.println(F("  turn                 Force an immediate egg turn"));
     Serial.println(F("  log                  Show event log"));
     Serial.println(F("  silence              Silence buzzer alarm"));
@@ -501,6 +507,47 @@ void Terminal::cmdStatus() {
     Serial.println(F("==================================="));
 }
 
+void Terminal::cmdSave() {
+    IncubatorState state = _sm->getState();
+    if (state == STATE_INCUBATING || state == STATE_LOCKDOWN ||
+        state == STATE_HATCHING || state == STATE_PAUSED ||
+        state == STATE_PREHEATING) {
+
+        IncubatorState saveState = (state == STATE_PAUSED) ?
+            _sm->getPreviousState() : state;
+        // PREHEATING saves as INCUBATING so resume works correctly
+        if (saveState == STATE_PREHEATING) saveState = STATE_INCUBATING;
+
+        _storage->save(
+            (uint8_t)_sm->getSpeciesID(),
+            (uint8_t)saveState,
+            _clock->getElapsedSeconds(),
+            _clock->getCurrentDay(),
+            _turner->getTurnsCompleted(),
+            _pid->getKp(), _pid->getKi(), _pid->getKd(),
+            (uint16_t)(_sm->getTargetTemp() * 10.0f),
+            (uint16_t)(_sm->getHumidityMidpoint() * 10.0f),
+            (_rtc && _rtc->isPresent()) ? _rtc->getEpoch2000() : 0
+        );
+
+        Serial.println(F(">> State saved to EEPROM."));
+        char timeBuf[20];
+        _clock->getFormattedTime(timeBuf, sizeof(timeBuf));
+        Serial.print(F("   Day "));
+        Serial.print(_clock->getCurrentDay());
+        Serial.print(F(" | Elapsed: "));
+        Serial.print(timeBuf);
+        Serial.print(F(" | PID: "));
+        Serial.print(_pid->getKp(), 1);
+        Serial.print('/');
+        Serial.print(_pid->getKi(), 2);
+        Serial.print('/');
+        Serial.println(_pid->getKd(), 1);
+    } else {
+        Serial.println(F("Nothing to save — no active incubation."));
+    }
+}
+
 void Terminal::cmdSet(const char* args) {
     while (*args == ' ') args++;
 
@@ -636,8 +683,47 @@ void Terminal::cmdSet(const char* args) {
         Serial.print(F(" beta="));
         Serial.println(beta, 1);
     }
+    else if (strncasecmp(args, "day ", 4) == 0) {
+        uint16_t day = (uint16_t)atoi(args + 4);
+        if (day < 1 || day > 60) {
+            Serial.println(F("Day must be 1-60."));
+            return;
+        }
+        IncubatorState st = _sm->getState();
+        if (st == STATE_IDLE || st == STATE_DONE) {
+            Serial.println(F("No active incubation. Use 'start' first."));
+            return;
+        }
+        // Set clock to beginning of requested day
+        uint32_t elapsed = (uint32_t)(day - 1) * SECONDS_PER_DAY;
+        _clock->resumeFrom(elapsed);
+        _turner->resetDayCount();
+        Serial.print(F(">> Clock set to day "));
+        Serial.print(day);
+        Serial.println(F(". Use 'save' to persist."));
+    }
+    else if (strncasecmp(args, "elapsed ", 8) == 0) {
+        float hours = atof(args + 8);
+        if (hours < 0.0f || hours > 1440.0f) {
+            Serial.println(F("Elapsed hours must be 0-1440."));
+            return;
+        }
+        IncubatorState st = _sm->getState();
+        if (st == STATE_IDLE || st == STATE_DONE) {
+            Serial.println(F("No active incubation. Use 'start' first."));
+            return;
+        }
+        uint32_t elapsed = (uint32_t)(hours * 3600.0f);
+        _clock->resumeFrom(elapsed);
+        _turner->resetDayCount();
+        Serial.print(F(">> Clock set to "));
+        Serial.print(hours, 1);
+        Serial.print(F("h (day "));
+        Serial.print(_clock->getCurrentDay());
+        Serial.println(F("). Use 'save' to persist."));
+    }
     else {
-        Serial.println(F("Usage: set temp|humidity|pid|turns|turn deg|turn rpm|fan|preheat|thermistor <values>"));
+        Serial.println(F("Usage: set temp|humidity|pid|turns|turn deg|turn rpm|fan|preheat|day|elapsed|thermistor <values>"));
     }
 }
 

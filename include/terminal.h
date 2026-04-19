@@ -81,6 +81,7 @@ private:
     void cmdPause();
     void cmdResume();
     void cmdStatus();
+    void cmdSave();
     void cmdSet(const char* args);
     void cmdLog();
     void cmdReset();

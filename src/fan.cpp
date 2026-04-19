@@ -3,15 +3,16 @@
 
 // =============================================================================
 // Fan Controller Implementation
-// Dual purpose: temperature cooling + humidity regulation via evaporation
+// Purpose: Reduce humidity ONLY by exhausting moist air out of the incubator.
 //
-// Logic:
-//   - Base speed ~30% for forced-air circulation
-//   - Temp too high → fan UP (active cooling)
-//   - Humidity too low → fan UP (more airflow over water = more evaporation)
-//   - Humidity too high → fan DOWN (less evaporation)
-//   - Temp too low → fan stays at base (let heater work)
-//   - Temperature safety ALWAYS takes priority over humidity
+// The fan CANNOT increase humidity (it vents air out, replacing it with
+// drier ambient air). Therefore:
+//   - Humidity above midpoint → fan ON at proportional PWM speed
+//   - Humidity at or below midpoint → fan OFF
+//   - Temperature below setpoint → throttle or stop fan to conserve heat
+//
+// PWM speed control minimises temperature loss compared to binary ON/OFF.
+// A deadband prevents the fan from cycling on tiny humidity fluctuations.
 // =============================================================================
 
 FanController::FanController()
@@ -20,36 +21,55 @@ FanController::FanController()
 
 void FanController::begin() {
     pinMode(FAN_PIN, OUTPUT);
-    digitalWrite(FAN_PIN, LOW);
+    analogWrite(FAN_PIN, 0);
 }
 
 void FanController::update(float tempError, float humidError) {
     if (_manualMode) {
-        _currentSpeed = (_manualSpeed > 0) ? _maxSpeed : 0;
-        digitalWrite(FAN_PIN, _currentSpeed > 0 ? HIGH : LOW);
+        _currentSpeed = (_manualSpeed > 0) ? (uint8_t)_manualSpeed : 0;
+        analogWrite(FAN_PIN, _currentSpeed);
         return;
     }
 
-    // Binary fan control: ON or OFF
-    bool shouldBeOn = false;
+    // humidError = midpoint - currentHumidity
+    //   positive → too dry (humidity below midpoint)
+    //   negative → too wet (humidity above midpoint)
+    // Fan can ONLY reduce humidity, so we only act when too wet.
 
-    // --- Temperature component (PRIORITY) ---
-    // tempError < 0 means too hot
-    if (tempError < -0.5f) {
-        shouldBeOn = true;
-    }
+    float humidExcess = -humidError;  // How many % above midpoint
 
-    // --- Humidity component (secondary) ---
-    // Only apply if temperature is not in a critical state
-    if (tempError > -1.0f && tempError < 1.0f) {
-        if (humidError > 3.0f) {
-            // Too dry — more airflow over water tray
-            shouldBeOn = true;
+    uint8_t speed = 0;
+
+    if (humidExcess > FAN_HUMID_DEADBAND) {
+        // --- Compute proportional fan speed ---
+        // Map humidity excess from deadband..full_range to MIN_ACTIVE..MAX
+        float range = FAN_HUMID_FULL_RANGE - FAN_HUMID_DEADBAND;
+        float fraction = (humidExcess - FAN_HUMID_DEADBAND) / range;
+        if (fraction > 1.0f) fraction = 1.0f;
+
+        speed = FAN_MIN_ACTIVE +
+                (uint8_t)(fraction * (float)(FAN_MAX_SPEED - FAN_MIN_ACTIVE));
+
+        // --- Temperature protection ---
+        // tempError > 0 means current temp is BELOW setpoint (too cold).
+        // Venting air cools the incubator, so throttle the fan when cold.
+        if (tempError > FAN_TEMP_PROTECT_HI) {
+            // Way too cold — stop fan entirely, let heater catch up
+            speed = 0;
+        } else if (tempError > FAN_TEMP_PROTECT_LO) {
+            // Linearly reduce fan as temp drops below setpoint
+            // At LO: keep full calculated speed
+            // At HI: reduce to zero
+            float scale = 1.0f - (tempError - FAN_TEMP_PROTECT_LO)
+                                / (FAN_TEMP_PROTECT_HI - FAN_TEMP_PROTECT_LO);
+            speed = (uint8_t)((float)speed * scale);
+            // Below minimum active PWM the motor stalls — just turn off
+            if (speed > 0 && speed < FAN_MIN_ACTIVE) speed = 0;
         }
     }
 
-    _currentSpeed = shouldBeOn ? _maxSpeed : 0;
-    digitalWrite(FAN_PIN, shouldBeOn ? HIGH : LOW);
+    _currentSpeed = speed;
+    analogWrite(FAN_PIN, speed);
 }
 
 void FanController::setManualSpeed(int16_t speed) {
@@ -60,7 +80,7 @@ void FanController::setManualSpeed(int16_t speed) {
         _manualMode = true;
         _manualSpeed = (speed > 0) ? (int16_t)_maxSpeed : 0;
         _currentSpeed = (uint8_t)_manualSpeed;
-        digitalWrite(FAN_PIN, _currentSpeed > 0 ? HIGH : LOW);
+        analogWrite(FAN_PIN, _currentSpeed);
     }
 }
 
@@ -71,10 +91,10 @@ void FanController::setSpeedRange(uint8_t min, uint8_t max) {
 }
 
 uint8_t FanController::getSpeedPercent() const {
-    return _currentSpeed > 0 ? 100 : 0;
+    return (uint8_t)((uint16_t)_currentSpeed * 100 / 255);
 }
 
 void FanController::fullSpeed() {
     _currentSpeed = _maxSpeed;
-    digitalWrite(FAN_PIN, HIGH);
+    analogWrite(FAN_PIN, _maxSpeed);
 }
