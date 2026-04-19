@@ -22,6 +22,11 @@ FanController::FanController()
 void FanController::begin() {
     pinMode(FAN_PIN, OUTPUT);
     analogWrite(FAN_PIN, 0);
+    // Override Timer3 prescaler: /1 instead of default /64
+    // Default analogWrite runs at ~490Hz (audible MOSFET whine).
+    // Prescaler=1 gives ~31kHz (well above human hearing).
+    // Only affects OC3A (fan). Heater on OC3B uses software slow PWM.
+    TCCR3B = (TCCR3B & 0b11111000) | 0b00000001;
 }
 
 void FanController::update(float tempError, float humidError) {

@@ -140,7 +140,9 @@ void Terminal::printStatus() {
         Serial.print((uint16_t)_heater->getOutput() * 100 / 255);
         Serial.print(F("% FAN="));
         Serial.print(_fan->getSpeedPercent());
-        Serial.println(F("%"));
+        Serial.print(F("% UPTIME="));
+        Serial.print(_clock->getElapsedSeconds());
+        Serial.println(F("s"));
         return;
     }
 
@@ -172,7 +174,10 @@ void Terminal::printStatus() {
     Serial.print(F("% FAN="));
     Serial.print(_fan->getSpeedPercent());
     Serial.print(F("% STATE="));
-    Serial.println(_sm->getStateName());
+    Serial.print(_sm->getStateName());
+    Serial.print(F(" UPTIME="));
+    Serial.print(_clock->getElapsedSeconds());
+    Serial.println(F("s"));
 }
 
 void Terminal::processCommand(const char* cmd) {

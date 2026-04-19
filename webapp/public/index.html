@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=5" />
+  <link rel="stylesheet" href="style.css?v=6" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -58,8 +58,8 @@
         <div class="sub" id="val-state-reason"></div>
       </div>
       <div class="metric wide">
-        <div class="label">Day</div>
-        <div class="value" id="val-day">--</div>
+        <div class="label">Uptime</div>
+        <div class="value" id="val-uptime">--</div>
       </div>
     </div>
 
@@ -260,6 +260,10 @@
               <input type="number" id="pid-kd" step="0.01" value="800.0" />
               <button class="btn" onclick="sendPID()">Set PID</button>
             </div>
+            <div class="form-row form-row-tuning">
+              <button class="btn btn-secondary" onclick="analyzeLogsForPID()">✨ Auto-Analyze Logs & Propose</button>
+              <span id="pid-analysis-msg" class="hint">Passively tunes using log data (no heating required)</span>
+            </div>
           </div>
 
           <div class="setting-card">
@@ -323,6 +327,6 @@
       </section>
     </main>
   </div>
-  <script src="app.js?v=7"></script>
+  <script src="app.js?v=11"></script>
 </body>
 </html>

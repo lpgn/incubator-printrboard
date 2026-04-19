@@ -86,8 +86,8 @@ function parseStatusLine(line) {
   let result = null;
 
   // Match: [DAY 01/21] T=21.8C ADC=642 TARGET=37.5C H=0% DHT=22.1C HTR=0% FAN=29% STATE=ERROR
-  // or:   [DAY 01/21] T=21.8C ADC=642 ADCTARGET=580 H=0% DHT=22.1C HTR=0% FAN=29% STATE=ERROR
-  const dayMatch = line.match(/\[DAY\s+(\d+)\/(\d+)\]\s+T=([\d.-]+)C\s+ADC=(\d+)\s+(?:TARGET=([\d.]+)C|ADCTARGET=(\d+))\s+H=(\d+)%\s+(?:DHT=([\d.-]+)C\s+)?HTR=(\d+)%\s+FAN=(\d+)%\s+STATE=(\S+)/);
+  // or:   [DAY 01/21] T=21.8C ADC=642 ADCTARGET=580 H=0% DHT=22.1C HTR=0% FAN=29% STATE=ERROR UPTIME=1234s
+  const dayMatch = line.match(/\[DAY\s+(\d+)\/(\d+)\]\s+T=([\d.-]+)C\s+ADC=(\d+)\s+(?:TARGET=([\d.]+)C|ADCTARGET=(\d+))\s+H=(\d+)%\s+(?:DHT=([\d.-]+)C\s+)?HTR=(\d+)%\s+FAN=(\d+)%\s+STATE=(\S+)\s+UPTIME=(\d+)s/);
   if (dayMatch) {
     const adcTarget = dayMatch[6] ? parseInt(dayMatch[6], 10) : null;
     lastStatus.targetTemp = adcTarget ? null : parseFloat(dayMatch[5]);
@@ -102,13 +102,13 @@ function parseStatusLine(line) {
       dhtTemp: dayMatch[8] ? parseFloat(dayMatch[8]) : null,
       heater: parseInt(dayMatch[9], 10),
       fan: parseInt(dayMatch[10], 10),
-      state: dayMatch[11]
+      state: dayMatch[11],
+      uptime: parseInt(dayMatch[12], 10)
     };
   }
 
-  // Match: [IDLE] T=21.8C ADC=642 TARGET=37.5C H=0% DHT=22.1C HTR=0% FAN=0%
-  // or:   [IDLE] T=21.8C ADC=642 ADCTARGET=580 H=0% DHT=22.1C HTR=0% FAN=0%
-  const idleMatch = line.match(/\[IDLE\]\s+T=([\d.-]+)C\s+ADC=(\d+)\s+(?:TARGET=([\d.]+)C|ADCTARGET=(\d+))\s+H=(\d+)%\s+(?:DHT=([\d.-]+)C\s+)?HTR=(\d+)%\s+FAN=(\d+)%/);
+  // or:   [IDLE] T=21.8C ADC=642 ADCTARGET=580 H=0% DHT=22.1C HTR=0% FAN=0% UPTIME=0s
+  const idleMatch = line.match(/\[IDLE\]\s+T=([\d.-]+)C\s+ADC=(\d+)\s+(?:TARGET=([\d.]+)C|ADCTARGET=(\d+))\s+H=(\d+)%\s+(?:DHT=([\d.-]+)C\s+)?HTR=(\d+)%\s+FAN=(\d+)%\s+UPTIME=(\d+)s/);
   if (idleMatch) {
     const adcTarget = idleMatch[4] ? parseInt(idleMatch[4], 10) : null;
     lastStatus.targetTemp = adcTarget ? null : parseFloat(idleMatch[3]);
@@ -123,7 +123,8 @@ function parseStatusLine(line) {
       dhtTemp: idleMatch[6] ? parseFloat(idleMatch[6]) : null,
       heater: parseInt(idleMatch[7], 10),
       fan: parseInt(idleMatch[8], 10),
-      state: 'IDLE'
+      state: 'IDLE',
+      uptime: parseInt(idleMatch[9], 10)
     };
   }
 

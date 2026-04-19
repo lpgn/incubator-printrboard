@@ -10,7 +10,7 @@ const els = {
   fan: document.getElementById('val-fan'),
   state: document.getElementById('val-state'),
   stateReason: document.getElementById('val-state-reason'),
-  day: document.getElementById('val-day'),
+  uptime: document.getElementById('val-uptime')
 };
 
 const ledMap = {
@@ -105,13 +105,24 @@ function updateStatus(s) {
   }
 
   if (s.day !== null && s.totalDays !== null && s.totalDays !== undefined) {
-    els.day.textContent = `${s.day} / ${s.totalDays}`;
-    const headerDay = document.getElementById('header-day');
-    if (headerDay) headerDay.textContent = `Day ${s.day} / ${s.totalDays}`;
+    if (s.state !== 'IDLE') {
+      const headerDay = document.getElementById('header-day');
+      if (headerDay) headerDay.textContent = `Day ${s.day} / ${s.totalDays}`;
+    }
   } else if (s.state === 'IDLE') {
-    els.day.textContent = '-';
     const headerDay = document.getElementById('header-day');
     if (headerDay) headerDay.textContent = 'Day -';
+  }
+
+  // Update Uptime Display
+  if (s.uptime !== null && s.uptime !== undefined) {
+    if (s.state !== 'IDLE') {
+      const hours = Math.floor(s.uptime / 3600);
+      const minutes = Math.floor((s.uptime % 3600) / 60);
+      els.uptime.textContent = `${hours}h ${minutes}m`;
+    } else {
+      els.uptime.textContent = '';
+    }
   }
 
   // ADC target mode badge in settings
@@ -548,6 +559,122 @@ function sendThermistor() {
 function sendTestHeater() {
   const pwm = document.getElementById('test-heater-pwm').value;
   send('test heater ' + pwm);
+}
+
+function analyzeLogsForPID() {
+  const msgEl = document.getElementById('pid-analysis-msg');
+  if (!msgEl) return;
+  
+  if (history.length < 60) {
+    msgEl.textContent = 'Not enough data (needs ~3 mins of logs) ⏳';
+    return;
+  }
+
+  msgEl.textContent = 'Analyzing...';
+
+  // Grab the last 15 minutes max
+  let cutoff = new Date(Date.now() - 15 * 60000);
+  let relevant = history.filter(h => new Date(h.t) >= cutoff);
+  
+  // Check if system has a target set
+  const target = relevant[relevant.length - 1].targetTemp;
+  if (!target) {
+    msgEl.textContent = 'No target temp set 🚫';
+    return;
+  }
+
+  // Smooth the temperature array to ignore tiny sensor noise (5-point moving average)
+  let smoothed = [];
+  for(let i=0; i<relevant.length; i++) {
+    let sum = 0;
+    let count = 0;
+    for(let j=Math.max(0, i-2); j<=Math.min(relevant.length-1, i+2); j++) {
+      if (relevant[j].temp != null) {
+        sum += relevant[j].temp;
+        count++;
+      }
+    }
+    smoothed.push(count > 0 ? sum/count : 0);
+  }
+
+  // Find peaks and valleys looking left/right. 
+  // Window of 15 seconds means a cycle must take at least 30s to be recognized as a distinct wave.
+  let peaks = [];
+  let valleys = [];
+  let window = 15; 
+  for(let i=window; i<smoothed.length-window; i++) {
+    let isPeak = true;
+    let isValley = true;
+    for(let j=i-window; j<=i+window; j++) {
+      if (i===j) continue;
+      if (smoothed[j] >= smoothed[i]) isPeak = false;
+      if (smoothed[j] <= smoothed[i]) isValley = false;
+    }
+    if (isPeak) peaks.push({idx: i, t: new Date(relevant[i].t).getTime(), val: smoothed[i]});
+    if (isValley) valleys.push({idx: i, t: new Date(relevant[i].t).getTime(), val: smoothed[i]});
+  }
+
+  if (peaks.length < 2 || valleys.length < 2) {
+    msgEl.innerHTML = 'System looks stable (no wave pattern found) ✅';
+    return;
+  }
+
+  // Find average Amplitude
+  let avgPeak = peaks.reduce((a, b) => a + b.val, 0) / peaks.length;
+  let avgValley = valleys.reduce((a, b) => a + b.val, 0) / valleys.length;
+  let tempAmplitude = (avgPeak - avgValley) / 2;
+
+  if (tempAmplitude < 0.15) {
+    msgEl.innerHTML = 'Stable: Oscillation is less than 0.15°C ✅';
+    return;
+  }
+
+  // Find Period (Pu) in seconds
+  let periods = [];
+  for(let i=1; i<peaks.length; i++) periods.push((peaks[i].t - peaks[i-1].t)/1000);
+  for(let i=1; i<valleys.length; i++) periods.push((valleys[i].t - valleys[i-1].t)/1000);
+  let Pu = periods.reduce((a, b) => a + b, 0) / periods.length;
+
+  // Find Heater Amplitude
+  let hMax = 0;
+  let hMin = 100;
+  for(let i=0; i<relevant.length; i++) {
+    if (relevant[i].heater > hMax) hMax = relevant[i].heater;
+    if (relevant[i].heater < hMin) hMin = relevant[i].heater;
+  }
+  
+  if (hMax === hMin) {
+    msgEl.innerHTML = 'Heater is stuck at ' + hMax + '% (Cannot tune)';
+    return;
+  }
+
+  // Ku calculation: the heater output is typically displayed 0-100%, 
+  // but firmware PID operates on 0-255 scale.
+  // We need Ku based on firmware scale because the user applies Kp to the firmware
+  let dpwm = ((hMax - hMin) / 100.0) * 255.0;
+  let heaterAmplitude = dpwm / 2.0;
+
+  // Ultimate Gain (Relay feedback formula)
+  let Ku = (4 * heaterAmplitude) / (Math.PI * tempAmplitude);
+
+  // Tyreus-Luyben Tuning (Excellent limits for slow, lagging systems like incubators)
+  let Kp = Ku / 2.2;
+  let Ti = 2.2 * Pu;
+  let Td = Pu / 6.3;
+
+  // Firmware implements: Output = Kp*Err + Int(Ki*Err) - Kd*d(T)
+  // Converting standard Ti/Td to Ki/Kd for a 1-second sample time loop:
+  let Ki = Kp / Ti;
+  let Kd = Kp * Td;
+
+  msgEl.innerHTML = `Found Oscillation! (Amplitude: <b>±${tempAmplitude.toFixed(2)}°C</b>, Period: <b>${Math.round(Pu)}s</b>).<br>` + 
+                    `Press Set PID to apply the values below.`;
+  msgEl.style.color = "var(--warn)";
+
+  // Populate inputs
+  document.getElementById('pid-kp').value = Math.max(0.1, Kp).toFixed(2);
+  document.getElementById('pid-ki').value = Math.max(0.001, Ki).toFixed(3);
+  document.getElementById('pid-kd').value = Math.max(0, Kd).toFixed(0);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
