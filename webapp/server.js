@@ -228,6 +228,30 @@ function openSerial() {
         broadcast(status);
       }
 
+      // Parse preset list lines
+      const presetMatch = raw.match(/^\[PRESET\]\s+(\d+)\s+(\S+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)/);
+      if (presetMatch) {
+        if (!lastStatus.presets) lastStatus.presets = [];
+        lastStatus.presets.push({
+          idx: parseInt(presetMatch[1], 10),
+          name: presetMatch[2],
+          days: parseInt(presetMatch[3], 10),
+          stop: parseInt(presetMatch[4], 10),
+          temp: parseInt(presetMatch[5], 10),
+          humidLo: parseInt(presetMatch[6], 10),
+          humidHi: parseInt(presetMatch[7], 10),
+          lockLo: parseInt(presetMatch[8], 10),
+          lockHi: parseInt(presetMatch[9], 10),
+          turns: parseInt(presetMatch[10], 10),
+          deg: parseInt(presetMatch[11], 10)
+        });
+        // Only broadcast when we have all 8
+        if (lastStatus.presets.length === 8) {
+          broadcast({ type: 'presets', presets: lastStatus.presets });
+          lastStatus.presets = [];
+        }
+      }
+
       // Fallback: always hunt for standalone uptime in any line
       const uptimeFallback = raw.match(/UPTIME=(\d+)s/);
       if (uptimeFallback) {

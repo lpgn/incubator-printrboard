@@ -29,6 +29,7 @@ let tempChart = null;
 let ws;
 let reconnectTimer;
 let pidHistory = [];  // Local cache for PID auto-analysis
+let currentPresets = [];
 
 // --- Tabs ---
 function showTab(name) {
@@ -67,6 +68,8 @@ function connect() {
       if (pidHistory.length > 7200) {
         pidHistory = pidHistory.slice(pidHistory.length - 7200);
       }
+    } else if (data.type === 'presets') {
+      renderPresets(data.presets);
     } else if (data.type === 'log') {
       appendLog(data.line);
     }
@@ -693,6 +696,97 @@ function analyzeLogsForPID() {
   document.getElementById('pid-kp').value = Math.max(0.1, Kp).toFixed(2);
   document.getElementById('pid-ki').value = Math.max(0.001, Ki).toFixed(3);
   document.getElementById('pid-kd').value = Math.max(0, Kd).toFixed(0);
+}
+
+// --- Species Presets ---
+function renderPresets(presets) {
+  currentPresets = presets;
+  const tbody = document.querySelector('#presets-table tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  for (const p of presets) {
+    const tr = document.createElement('tr');
+    tr.dataset.idx = p.idx;
+    const tempC = (p.temp / 10).toFixed(1);
+
+    tr.innerHTML = `
+      <td style="padding:8px; border-bottom:1px solid rgba(255,255,255,0.05);">${p.idx}</td>
+      <td style="padding:8px; border-bottom:1px solid rgba(255,255,255,0.05);">${escapeHtml(p.name)}</td>
+      <td style="padding:8px; border-bottom:1px solid rgba(255,255,255,0.05);">${p.days}</td>
+      <td style="padding:8px; border-bottom:1px solid rgba(255,255,255,0.05);">${p.stop}</td>
+      <td style="padding:8px; border-bottom:1px solid rgba(255,255,255,0.05);">${tempC}</td>
+      <td style="padding:8px; border-bottom:1px solid rgba(255,255,255,0.05);">${p.humidLo} – ${p.humidHi}</td>
+      <td style="padding:8px; border-bottom:1px solid rgba(255,255,255,0.05);">${p.lockLo} – ${p.lockHi}</td>
+      <td style="padding:8px; border-bottom:1px solid rgba(255,255,255,0.05);">${p.turns}</td>
+      <td style="padding:8px; border-bottom:1px solid rgba(255,255,255,0.05);">${p.deg}</td>
+      <td style="padding:8px; border-bottom:1px solid rgba(255,255,255,0.05);">
+        <button class="btn" onclick="editPresetRow(${p.idx})">Edit</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+function editPresetRow(idx) {
+  const tr = document.querySelector(`#presets-table tbody tr[data-idx="${idx}"]`);
+  if (!tr) return;
+  const p = currentPresets.find(pr => pr.idx === idx);
+  if (!p) return;
+
+  const tempC = (p.temp / 10).toFixed(1);
+  const cells = tr.children;
+
+  cells[1].innerHTML = `<input type="text" class="preset-input" value="${escapeHtml(p.name)}" style="width:90px; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.15); border-radius:6px; padding:6px 8px; font-family:inherit; font-size:0.9rem;">`;
+  cells[2].innerHTML = `<input type="number" class="preset-input" value="${p.days}" min="1" max="60" style="width:60px; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.15); border-radius:6px; padding:6px 8px; font-family:inherit; font-size:0.9rem;">`;
+  cells[3].innerHTML = `<input type="number" class="preset-input" value="${p.stop}" min="1" max="60" style="width:60px; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.15); border-radius:6px; padding:6px 8px; font-family:inherit; font-size:0.9rem;">`;
+  cells[4].innerHTML = `<input type="number" class="preset-input" value="${tempC}" min="30" max="42" step="0.1" style="width:60px; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.15); border-radius:6px; padding:6px 8px; font-family:inherit; font-size:0.9rem;">`;
+  cells[5].innerHTML = `<input type="number" class="preset-input" value="${p.humidLo}" min="20" max="90" style="width:48px; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.15); border-radius:6px; padding:6px 8px; font-family:inherit; font-size:0.9rem;"> – <input type="number" class="preset-input" value="${p.humidHi}" min="20" max="90" style="width:48px; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.15); border-radius:6px; padding:6px 8px; font-family:inherit; font-size:0.9rem;">`;
+  cells[6].innerHTML = `<input type="number" class="preset-input" value="${p.lockLo}" min="20" max="90" style="width:48px; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.15); border-radius:6px; padding:6px 8px; font-family:inherit; font-size:0.9rem;"> – <input type="number" class="preset-input" value="${p.lockHi}" min="20" max="90" style="width:48px; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.15); border-radius:6px; padding:6px 8px; font-family:inherit; font-size:0.9rem;">`;
+  cells[7].innerHTML = `<input type="number" class="preset-input" value="${p.turns}" min="1" max="24" style="width:60px; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.15); border-radius:6px; padding:6px 8px; font-family:inherit; font-size:0.9rem;">`;
+  cells[8].innerHTML = `<input type="number" class="preset-input" value="${p.deg}" min="15" max="360" style="width:60px; background:rgba(0,0,0,0.3); color:#fff; border:1px solid rgba(255,255,255,0.15); border-radius:6px; padding:6px 8px; font-family:inherit; font-size:0.9rem;">`;
+  cells[9].innerHTML = `
+    <button class="btn btn-success" onclick="savePreset(${idx})">Save</button>
+    <button class="btn" onclick="cancelPresetEdit(${idx})">Cancel</button>
+  `;
+}
+
+function savePreset(idx) {
+  const tr = document.querySelector(`#presets-table tbody tr[data-idx="${idx}"]`);
+  if (!tr) return;
+  const p = currentPresets.find(pr => pr.idx === idx);
+  if (!p) return;
+
+  const inputs = tr.querySelectorAll('input');
+  const name = inputs[0].value.trim();
+  const days = parseInt(inputs[1].value, 10);
+  const stop = parseInt(inputs[2].value, 10);
+  const temp = Math.round(parseFloat(inputs[3].value) * 10);
+  const humidLo = parseInt(inputs[4].value, 10);
+  const humidHi = parseInt(inputs[5].value, 10);
+  const lockLo = parseInt(inputs[6].value, 10);
+  const lockHi = parseInt(inputs[7].value, 10);
+  const turns = parseInt(inputs[8].value, 10);
+  const deg = parseInt(inputs[9].value, 10);
+
+  const presetName = p.name;
+
+  if (name !== p.name) send(`preset ${presetName} name ${name}`);
+  if (days !== p.days) send(`preset ${presetName} days ${days}`);
+  if (stop !== p.stop) send(`preset ${presetName} stop ${stop}`);
+  if (temp !== p.temp) send(`preset ${presetName} temp ${temp}`);
+  if (humidLo !== p.humidLo) send(`preset ${presetName} humidlo ${humidLo}`);
+  if (humidHi !== p.humidHi) send(`preset ${presetName} humidhi ${humidHi}`);
+  if (lockLo !== p.lockLo) send(`preset ${presetName} locklo ${lockLo}`);
+  if (lockHi !== p.lockHi) send(`preset ${presetName} lockhi ${lockHi}`);
+  if (turns !== p.turns) send(`preset ${presetName} turns ${turns}`);
+  if (deg !== p.deg) send(`preset ${presetName} deg ${deg}`);
+
+  cancelPresetEdit(idx);
+}
+
+function cancelPresetEdit(idx) {
+  renderPresets(currentPresets);
 }
 
 document.addEventListener('DOMContentLoaded', () => {

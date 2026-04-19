@@ -64,6 +64,7 @@
 
     <nav class="tabbar">
       <button class="tab-btn active" data-tab="dashboard" onclick="showTab('dashboard')">Dashboard</button>
+      <button class="tab-btn" data-tab="species" onclick="showTab('species')">Species</button>
       <button class="tab-btn" data-tab="settings" onclick="showTab('settings')">Settings</button>
       <button class="tab-btn" data-tab="terminal" onclick="showTab('terminal')">Terminal</button>
     </nav>
@@ -98,6 +99,35 @@
         <div class="chart-card" style="margin-top:12px;">
           <h3>Debug — Last Status Received</h3>
           <pre id="debug-last-status" style="font-size:0.75rem; background:#0f172a; padding:8px; border-radius:6px; max-height:120px; overflow:auto; color:#94a3b8;">Waiting for data...</pre>
+        </div>
+      </section>
+
+      <!-- SPECIES -->
+      <section id="tab-species" class="tab-panel">
+        <div class="setting-card">
+          <div class="table-header">
+            <h3>Species Presets</h3>
+            <button class="btn" onclick="send('preset')">🔄 Refresh</button>
+          </div>
+          <div style="overflow-x:auto;">
+            <table id="presets-table" style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+              <thead>
+                <tr style="border-bottom:1px solid var(--glass-border);">
+                  <th style="text-align:left; padding:8px; color:var(--muted); font-weight:600;">#</th>
+                  <th style="text-align:left; padding:8px; color:var(--muted); font-weight:600;">Name</th>
+                  <th style="text-align:left; padding:8px; color:var(--muted); font-weight:600;">Days</th>
+                  <th style="text-align:left; padding:8px; color:var(--muted); font-weight:600;">Lockdown</th>
+                  <th style="text-align:left; padding:8px; color:var(--muted); font-weight:600;">Temp (°C)</th>
+                  <th style="text-align:left; padding:8px; color:var(--muted); font-weight:600;">Setter RH</th>
+                  <th style="text-align:left; padding:8px; color:var(--muted); font-weight:600;">Lockdown RH</th>
+                  <th style="text-align:left; padding:8px; color:var(--muted); font-weight:600;">Turns</th>
+                  <th style="text-align:left; padding:8px; color:var(--muted); font-weight:600;">Angle</th>
+                  <th style="text-align:left; padding:8px; color:var(--muted); font-weight:600;">Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
         </div>
       </section>
 
