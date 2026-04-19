@@ -188,8 +188,7 @@ float StateMachine::getHumidityMidpoint() const {
 }
 
 bool StateMachine::checkDayTransitions(uint16_t currentDay) {
-    // Hardcoded: lockdown starts on day 18 for all species
-    if (_state == STATE_INCUBATING && currentDay >= 18) {
+    if (_state == STATE_INCUBATING && currentDay >= _preset.turningStopDay) {
         return transitionToLockdown();
     }
     if (_state == STATE_LOCKDOWN && currentDay >= _preset.totalDays - 1) {
