@@ -148,8 +148,8 @@ void setup() {
         Serial.println(F(" hours"));
 
         Serial.println(F(""));
-        Serial.println(F("  Type 'resume' to continue incubation."));
-        Serial.println(F("  Type 'reset' to start fresh (or select a new species)."));
+        Serial.println(F("  AUTO-RESUMING incubation..."));
+        Serial.println(F("  Type 'stop' if you wish to abort."));
         Serial.println(F("========================================"));
         Serial.println();
 
@@ -160,8 +160,8 @@ void setup() {
         // Set species
         stateMachine.setSpecies((SpeciesID)saved.speciesID);
 
-        // Prepare for resume — go to PAUSED state with previous state saved
-        stateMachine.forcePaused((IncubatorState)saved.state);
+        // Restore the saved state directly — do not wait for user
+        stateMachine.forceState((IncubatorState)saved.state);
 
         // Pre-load the clock with saved elapsed time
         uint32_t resumedElapsed = saved.elapsedSeconds;
@@ -182,27 +182,27 @@ void setup() {
         }
 
         incubationClock.resumeFrom(resumedElapsed);
-        incubationClock.pause(); // Don't start counting yet until user says 'resume'
+        // Clock is now running — no pause
 
-        // Restore turner state
+        // Restore turner state and enable if appropriate
         turner.setTurnsPerDay(stateMachine.getActivePreset().turnsPerDay);
         turner.setDegreesPerTurn(stateMachine.getActivePreset().turnDegrees);
         turner.setTurnsCompleted(saved.turnsToday);
+        if (stateMachine.isTurningAllowed()) {
+            turner.setEnabled(true);
+        }
 
-        // Go to paused state waiting for user to resume
-        // We manually set the state since normal transitions require specific source states
-        // The terminal 'resume' command will handle the actual resume
-        // For now start heating to not lose temperature
+        // Start heating and fan immediately for all active states
         IncubatorState resumeState = (IncubatorState)saved.state;
         if (resumeState == STATE_INCUBATING || resumeState == STATE_LOCKDOWN || resumeState == STATE_HATCHING) {
-            // Start heating immediately — don't wait for resume
-            // Temperature is critical during recovery
             heater.clearShutdown();
             heater.setManualSpeed(-1);
             pid.reset();
             pid.setSetpoint(stateMachine.getTargetTemp());
             fan.setManualSpeed(-1); // Auto mode
         }
+
+        storage.logEvent(EVENT_RESUME, incubationClock.getCurrentDay());
 
     } else {
         // No saved state — fresh start

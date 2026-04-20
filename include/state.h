@@ -79,6 +79,9 @@ public:
     // Force PAUSED state for EEPROM recovery (bypasses normal transition guards)
     void forcePaused(IncubatorState prevState) { _prevState = prevState; _state = STATE_PAUSED; }
 
+    // Force any state for auto-resume after power loss
+    void forceState(IncubatorState state) { _state = state; }
+
     // Is turning allowed in current state?
     bool isTurningAllowed() const;
 

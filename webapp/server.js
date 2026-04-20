@@ -226,10 +226,10 @@ function openSerial() {
         bootType = 'normal';
         broadcast({ type: 'boot', state: 'started', recovering: false });
       }
-      if (raw.includes("Type 'resume' to continue")) {
+      if (raw.includes("AUTO-RESUMING incubation")) {
         broadcast({ type: 'boot', state: 'resume_ready' });
       }
-      if (raw.includes("Type 'species' to see options") || raw.includes("Type 'reset' to start fresh")) {
+      if (raw.includes("Type 'species' to see options") || raw.includes("Type 'reset' to start fresh") || raw.includes("Type 'stop' if you wish")) {
         if (bootType) {
           bootType = null;
           broadcast({ type: 'boot', state: 'complete' });
