@@ -411,6 +411,7 @@ void Terminal::cmdStop() {
     _turner->setEnabled(false);
     _fan->setManualSpeed(0);
     _clock->stop();
+    _storage->invalidateState();
     _storage->logEvent(EVENT_USER_STOP, 0);
 
     Serial.println(F(">> STOPPED. Heater OFF, turner OFF, fan OFF."));

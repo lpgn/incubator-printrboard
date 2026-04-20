@@ -230,3 +230,7 @@ uint8_t Storage::loadPreheatMax() {
     if (val == 0xFF) return 0; // Uninitialized = use compile-time default
     return val;
 }
+
+void Storage::invalidateState() {
+    EEPROM.update(EEPROM_ADDR_MAGIC, 0xFF);
+}

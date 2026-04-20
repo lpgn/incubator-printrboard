@@ -366,6 +366,7 @@ void loop() {
                     storage.logEvent(EVENT_HATCHING, currentDay);
                 } else if (stateMachine.getState() == STATE_DONE) {
                     storage.logEvent(EVENT_DONE, currentDay);
+                    storage.invalidateState();
                     heater.setOutput(0);
                     turner.setEnabled(false);
                     fan.setManualSpeed(0);

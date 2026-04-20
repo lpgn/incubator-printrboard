@@ -61,6 +61,9 @@ public:
     void savePreheatMax(uint8_t pwm);
     uint8_t loadPreheatMax();
 
+    // Invalidate saved state (clear magic byte) without destroying calibration/logs
+    void invalidateState();
+
 private:
     uint8_t calcChecksum(const SavedState& s);
     void writeFloat(uint16_t addr, float value);
