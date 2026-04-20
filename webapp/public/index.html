@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=8" />
+  <link rel="stylesheet" href="style.css?v=9" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -339,6 +339,9 @@
               <button class="btn btn-sm" onclick="send('sd cat LOGFILE.TXT')">View Log</button>
               <button class="btn btn-sm" onclick="send('sd cat STATE.TXT')">View State</button>
               <button class="btn btn-sm btn-warn" onclick="send('sd reinit')">Reinit</button>
+              <div class="toolbar-sep"></div>
+              <input type="text" id="sd-filename" class="toolbar-input" placeholder="filename.txt" />
+              <button class="btn btn-sm btn-primary" onclick="sendSdCat()">Read File</button>
             </div>
           </div>
           <pre id="log"></pre>
@@ -346,6 +349,6 @@
       </section>
     </main>
   </div>
-  <script src="app.js?v=13"></script>
+  <script src="app.js?v=14"></script>
 </body>
 </html>

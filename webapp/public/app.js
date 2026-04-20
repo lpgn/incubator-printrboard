@@ -481,6 +481,13 @@ cmdInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') sendInput();
 });
 
+document.addEventListener('keydown', (e) => {
+  const sdInput = document.getElementById('sd-filename');
+  if (e.key === 'Enter' && document.activeElement === sdInput) {
+    sendSdCat();
+  }
+});
+
 // --- Settings helpers ---
 function sendTargetTemp() {
   const val = document.getElementById('target-temp').value;
@@ -605,6 +612,15 @@ function sendThermistor() {
 function sendTestHeater() {
   const pwm = document.getElementById('test-heater-pwm').value;
   send('test heater ' + pwm);
+}
+
+function sendSdCat() {
+  const fname = document.getElementById('sd-filename').value.trim();
+  if (!fname) {
+    appendLog('[ERR] Enter a filename');
+    return;
+  }
+  send('sd cat ' + fname);
 }
 
 function analyzeLogsForPID() {

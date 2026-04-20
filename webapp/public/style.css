@@ -569,3 +569,26 @@ pre#log .time { color: #475569; margin-right: 12px; font-size: 0.8rem; }
 .terminal-header h3 {
   margin: 0;
 }
+
+/* SD Toolbar extras */
+.toolbar-sep {
+  width: 1px;
+  height: 20px;
+  background: var(--glass-border);
+  margin: 0 4px;
+}
+.toolbar-input {
+  background: rgba(0,0,0,0.3);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 0.8rem;
+  font-family: inherit;
+  width: 120px;
+}
+.toolbar-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
