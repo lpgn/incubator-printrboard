@@ -233,8 +233,8 @@ void Terminal::processCommand(const char* cmd) {
         cmdTest(cmd + 5);
     } else if (strncasecmp(cmd, "override", 8) == 0) {
         cmdOverride(cmd + 8);
-    } else if (strcasecmp(cmd, "sd") == 0) {
-        cmdSD();
+    } else if (strcasecmp(cmd, "sd") == 0 || strncasecmp(cmd, "sd ", 3) == 0) {
+        cmdSD(cmd + 2);
     } else if (strcasecmp(cmd, "custom") == 0 || strncasecmp(cmd, "custom ", 7) == 0) {
         cmdCustom(cmd + 6);
     } else if (strcasecmp(cmd, "preset") == 0 || strncasecmp(cmd, "preset ", 7) == 0) {
@@ -275,8 +275,12 @@ void Terminal::cmdHelp() {
     Serial.println(F("  set elapsed <hours>  Set total elapsed hours"));
     Serial.println(F("  turn                 Force an immediate egg turn"));
     Serial.println(F("  log                  Show event log"));
-    Serial.println(F("  silence              Silence buzzer alarm"));
     Serial.println(F("  sd                   Show SD card status"));
+    Serial.println(F("  sd ls                List files on SD card"));
+    Serial.println(F("  sd cat <file>        Display file contents"));
+    Serial.println(F("  sd rm <file>         Delete a file"));
+    Serial.println(F("  sd reinit            Reinitialize SD card"));
+    Serial.println(F("  silence              Silence buzzer alarm"));
     Serial.println(F("  reset                Factory reset (clear EEPROM)"));
     Serial.println(F("  help                 Show this help"));
     Serial.println(F(""));
@@ -904,11 +908,26 @@ void Terminal::cmdTest(const char* args) {
     }
 }
 
-void Terminal::cmdSD() {
-    if (_sd) {
-        _sd->printStatus();
-    } else {
+void Terminal::cmdSD(const char* args) {
+    if (!_sd) {
         Serial.println(F("[SD] Logger not available."));
+        return;
+    }
+    while (*args == ' ') args++;
+    if (*args == '\0') {
+        _sd->printStatus();
+        return;
+    }
+    if (strncasecmp(args, "ls", 2) == 0) {
+        _sd->listFiles();
+    } else if (strncasecmp(args, "cat ", 4) == 0) {
+        _sd->printFile(args + 4);
+    } else if (strncasecmp(args, "rm ", 3) == 0) {
+        _sd->removeFile(args + 3);
+    } else if (strncasecmp(args, "reinit", 6) == 0) {
+        _sd->reinit(SD_CS_PIN);
+    } else {
+        Serial.println(F("Usage: sd [ls|cat <file>|rm <file>|reinit]"));
     }
 }
 

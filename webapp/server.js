@@ -31,6 +31,8 @@ let lastStatus = {
   connected: false
 };
 
+let bootType = null; // null, 'normal', 'recovery'
+
 let lastAlarms = {
   sensorFail: false,
   overTemp: false,
@@ -211,6 +213,33 @@ function openSerial() {
       const raw = line.trim();
       if (!raw) return;
 
+      // Boot detection
+      if (raw.includes('EGG INCUBATOR v1.0')) {
+        bootType = 'normal';
+        broadcast({ type: 'boot', state: 'started', recovering: false });
+      }
+      if (raw.includes('POWER RECOVERY DETECTED')) {
+        bootType = 'recovery';
+        broadcast({ type: 'boot', state: 'started', recovering: true });
+      }
+      if (raw.includes('No saved state found')) {
+        bootType = 'normal';
+        broadcast({ type: 'boot', state: 'started', recovering: false });
+      }
+      if (raw.includes("Type 'resume' to continue")) {
+        broadcast({ type: 'boot', state: 'resume_ready' });
+      }
+      if (raw.includes("Type 'species' to see options") || raw.includes("Type 'reset' to start fresh")) {
+        if (bootType) {
+          bootType = null;
+          broadcast({ type: 'boot', state: 'complete' });
+        }
+      }
+      if (bootType && raw.startsWith('> ')) {
+        bootType = null;
+        broadcast({ type: 'boot', state: 'complete' });
+      }
+
       const prevAlarms = JSON.stringify(lastAlarms);
       parseAlarms(raw);
       if (JSON.stringify(lastAlarms) !== prevAlarms) {
@@ -226,6 +255,10 @@ function openSerial() {
       if (status) {
         Object.assign(lastStatus, status);
         broadcast(status);
+        if (bootType) {
+          bootType = null;
+          broadcast({ type: 'boot', state: 'complete' });
+        }
       }
 
       // Parse preset list lines
@@ -284,6 +317,9 @@ wss.on('connection', (ws) => {
   ws.send(JSON.stringify({ type: 'alarms', alarms: { ...lastAlarms } }));
   if (history.length) {
     ws.send(JSON.stringify({ type: 'history', history }));
+  }
+  if (bootType) {
+    ws.send(JSON.stringify({ type: 'boot', state: 'started', recovering: bootType === 'recovery' }));
   }
 
   ws.on('message', (message) => {

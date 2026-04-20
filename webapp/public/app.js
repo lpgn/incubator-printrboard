@@ -30,6 +30,7 @@ let ws;
 let reconnectTimer;
 let pidHistory = [];  // Local cache for PID auto-analysis
 let currentPresets = [];
+let bootOverlayTimer = null;
 
 // --- Tabs ---
 function showTab(name) {
@@ -72,6 +73,8 @@ function connect() {
       renderPresets(data.presets);
     } else if (data.type === 'log') {
       appendLog(data.line);
+    } else if (data.type === 'boot') {
+      updateBootOverlay(data);
     }
   };
 
@@ -90,9 +93,43 @@ function updateConnection(connected) {
   connBadge.className = 'badge ' + (connected ? 'connected' : 'disconnected');
 }
 
+function updateBootOverlay(data) {
+  const overlay = document.getElementById('boot-overlay');
+  const title = document.getElementById('boot-title');
+  const msg = document.getElementById('boot-msg');
+  if (!overlay || !title || !msg) return;
+
+  if (data.state === 'started') {
+    overlay.classList.remove('hidden');
+    if (bootOverlayTimer) clearTimeout(bootOverlayTimer);
+    bootOverlayTimer = setTimeout(() => {
+      overlay.classList.add('hidden');
+    }, 15000);
+    if (data.recovering) {
+      title.textContent = 'Power Recovery Detected';
+      msg.textContent = "The board has recovered from a power outage. Please wait for the boot sequence to complete, then type 'resume' in the terminal or click the Resume button.";
+    } else {
+      title.textContent = 'Board is Booting...';
+      msg.textContent = 'Please wait while the incubator firmware starts up.';
+    }
+  } else if (data.state === 'resume_ready') {
+    title.textContent = 'Ready to Resume';
+    msg.textContent = "Type 'resume' in the terminal or click the Resume button to continue incubation.";
+  } else if (data.state === 'complete') {
+    if (bootOverlayTimer) clearTimeout(bootOverlayTimer);
+    overlay.classList.add('hidden');
+  }
+}
+
 function updateStatus(s) {
   const debugEl = document.getElementById('debug-last-status');
   if (debugEl) debugEl.textContent = JSON.stringify(s, null, 2);
+
+  // Hide boot overlay as soon as we get real status data
+  const bootOverlay = document.getElementById('boot-overlay');
+  if (bootOverlay && !bootOverlay.classList.contains('hidden')) {
+    bootOverlay.classList.add('hidden');
+  }
 
   if (s.temp !== null && s.temp !== undefined) {
     els.temp.textContent = (s.temp === -999.0) ? 'ERR' : s.temp.toFixed(1);

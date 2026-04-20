@@ -31,6 +31,18 @@ public:
     // Print SD card info to Serial
     void printStatus();
 
+    // List files in root directory
+    bool listFiles();
+
+    // Print contents of a file to Serial (streams in chunks)
+    bool printFile(const char* filename);
+
+    // Remove a file
+    bool removeFile(const char* filename);
+
+    // Reinitialize the SD card
+    bool reinit(uint8_t csPin);
+
 private:
     bool _ready;
     uint8_t _csPin;

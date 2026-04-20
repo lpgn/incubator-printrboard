@@ -106,3 +106,98 @@ void SDLogger::printStatus() {
         Serial.println(F("NOT READY (no card or init failed)"));
     }
 }
+
+bool SDLogger::listFiles() {
+    if (!_ready) {
+        Serial.println(F("[SD] Not ready"));
+        return false;
+    }
+    File root = SD.open("/");
+    if (!root) {
+        Serial.println(F("[SD] Failed to open root directory"));
+        return false;
+    }
+    Serial.println(F("[SD] Files:"));
+    uint16_t count = 0;
+    while (true) {
+        File entry = root.openNextFile();
+        if (!entry) break;
+        Serial.print(F("  "));
+        Serial.print(entry.name());
+        if (entry.isDirectory()) {
+            Serial.println(F("/"));
+        } else {
+            Serial.print(F("  "));
+            Serial.print(entry.size());
+            Serial.println(F(" bytes"));
+        }
+        entry.close();
+        count++;
+    }
+    root.close();
+    Serial.print(F("[SD] "));
+    Serial.print(count);
+    Serial.println(F(" item(s)"));
+    return true;
+}
+
+bool SDLogger::printFile(const char* filename) {
+    if (!_ready) {
+        Serial.println(F("[SD] Not ready"));
+        return false;
+    }
+    File f = SD.open(filename);
+    if (!f) {
+        Serial.print(F("[SD] Failed to open: "));
+        Serial.println(filename);
+        return false;
+    }
+    Serial.print(F("[SD] --- "));
+    Serial.print(filename);
+    Serial.println(F(" ---"));
+    uint32_t total = 0;
+    while (f.available()) {
+        char buf[65];
+        int n = f.read(buf, 64);
+        if (n > 0) {
+            buf[n] = '\0';
+            Serial.print(buf);
+            total += n;
+        }
+    }
+    Serial.println();
+    Serial.print(F("[SD] --- EOF ("));
+    Serial.print(total);
+    Serial.println(F(" bytes) ---"));
+    f.close();
+    return true;
+}
+
+bool SDLogger::removeFile(const char* filename) {
+    if (!_ready) {
+        Serial.println(F("[SD] Not ready"));
+        return false;
+    }
+    if (!SD.remove(filename)) {
+        Serial.print(F("[SD] Failed to remove: "));
+        Serial.println(filename);
+        return false;
+    }
+    Serial.print(F("[SD] Removed: "));
+    Serial.println(filename);
+    return true;
+}
+
+bool SDLogger::reinit(uint8_t csPin) {
+    _ready = false;
+    _csPin = csPin;
+    pinMode(csPin, OUTPUT);
+    if (!SD.begin(csPin)) {
+        Serial.println(F("[SD] Reinit failed"));
+        return false;
+    }
+    _ready = true;
+    Serial.println(F("[SD] Reinit successful"));
+    ensureHeader(LOG_FILE);
+    return true;
+}

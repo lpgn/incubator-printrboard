@@ -7,11 +7,18 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=6" />
+  <link rel="stylesheet" href="style.css?v=8" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <div class="app">
+    <div id="boot-overlay" class="boot-overlay hidden">
+      <div class="boot-overlay-content">
+        <div class="boot-spinner"></div>
+        <h2 id="boot-title">Board is booting...</h2>
+        <p id="boot-msg">Please wait while the incubator firmware starts up.</p>
+      </div>
+    </div>
     <header class="topbar">
       <div class="brand">
         <h1>🥚 Egg Incubator</h1>
@@ -325,12 +332,20 @@
               <input type="text" id="cmd-input" placeholder="Type raw command and press Enter..." />
               <button class="btn" onclick="sendInput()">Send</button>
             </div>
+            <div class="sd-toolbar">
+              <span class="toolbar-label">💾 SD Card</span>
+              <button class="btn btn-sm" onclick="send('sd')">Status</button>
+              <button class="btn btn-sm" onclick="send('sd ls')">List Files</button>
+              <button class="btn btn-sm" onclick="send('sd cat LOGFILE.TXT')">View Log</button>
+              <button class="btn btn-sm" onclick="send('sd cat STATE.TXT')">View State</button>
+              <button class="btn btn-sm btn-warn" onclick="send('sd reinit')">Reinit</button>
+            </div>
           </div>
           <pre id="log"></pre>
         </div>
       </section>
     </main>
   </div>
-  <script src="app.js?v=11"></script>
+  <script src="app.js?v=13"></script>
 </body>
 </html>

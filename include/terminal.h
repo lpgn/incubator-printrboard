@@ -89,7 +89,7 @@ private:
     void cmdTurn();
     void cmdOverride(const char* arg);
     void cmdTest(const char* args);
-    void cmdSD();
+    void cmdSD(const char* args);
     void cmdCustom(const char* args);
     void cmdPreset(const char* args);
     void cmdCal(const char* args);
