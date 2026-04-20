@@ -171,6 +171,7 @@
 #define EEPROM_ADDR_TARGET_TEMP 0x1A   // 2 bytes (°C × 10)
 #define EEPROM_ADDR_HUMIDITY   0x1C    // 2 bytes (% × 10)
 #define EEPROM_ADDR_CHECKSUM   0x1E    // 1 byte
+#define EEPROM_ADDR_LOG_INDEX  0x1F    // 1 byte — circular log write position
 #define EEPROM_ADDR_CUSTOM     0x20    // 96 bytes — custom species params
 #define EEPROM_ADDR_LOG        0x80    // 128 bytes — event log
 

@@ -87,8 +87,9 @@ void Storage::logEvent(uint8_t eventCode, uint16_t eventData) {
     // Simple circular log: 16 entries × 8 bytes each = 128 bytes
     // Each entry: [code, data_hi, data_lo, day_hi, day_lo, hour, min, sec]
 
-    // Find the next empty slot or overwrite oldest
-    static uint8_t logIndex = 0;
+    uint8_t logIndex = EEPROM.read(EEPROM_ADDR_LOG_INDEX);
+    if (logIndex >= 16) logIndex = 0;
+
     uint16_t addr = EEPROM_ADDR_LOG + (logIndex * 8);
 
     EEPROM.update(addr, eventCode);
@@ -102,12 +103,21 @@ void Storage::logEvent(uint8_t eventCode, uint16_t eventData) {
     EEPROM.update(addr + 7, 0);
 
     logIndex = (logIndex + 1) % 16;
+    EEPROM.update(EEPROM_ADDR_LOG_INDEX, logIndex);
 }
 
 void Storage::printEventLog() {
-    Serial.println(F("Event Log:"));
+    uint8_t logIndex = EEPROM.read(EEPROM_ADDR_LOG_INDEX);
+    if (logIndex >= 16) logIndex = 0;
+
+    // If the slot at logIndex is filled, the buffer has wrapped and we print
+    // from logIndex onwards (oldest first). Otherwise print from slot 0.
+    bool wrapped = (EEPROM.read(EEPROM_ADDR_LOG + (logIndex * 8)) != 0xFF);
+
+    Serial.println(F("Event Log (oldest first):"));
     for (uint8_t i = 0; i < 16; i++) {
-        uint16_t addr = EEPROM_ADDR_LOG + (i * 8);
+        uint8_t idx = wrapped ? (logIndex + i) % 16 : i;
+        uint16_t addr = EEPROM_ADDR_LOG + (idx * 8);
         uint8_t code = EEPROM.read(addr);
         if (code == 0xFF) continue; // Empty slot
 
