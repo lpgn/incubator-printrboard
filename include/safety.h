@@ -24,7 +24,13 @@ public:
     bool isSensorFailed() const { return _sensorFail; }
     bool isHumidityHigh() const { return _humidHigh; }
     bool isHumidityLow() const { return _humidLow; }
-    bool isAnyAlarm() const { return _overTemp || _underTemp || _sensorFail || _humidHigh || _humidLow; }
+    bool isDigitalFault() const { return _digitalFault; }
+    bool isAnyAlarm() const { return _overTemp || _underTemp || _sensorFail || _humidHigh || _humidLow || _digitalFault; }
+
+    // Flag a control-sensor fault where the system has FALLEN BACK to the
+    // thermistor (SHT31/DHT lost mid-run). Sounds the alarm but is NOT wired
+    // into the heater-shutdown trigger — control keeps running on thermistor.
+    void setDigitalFault(bool f) { _digitalFault = f; }
 
     // Override safety shutdowns — allows testing even with alarms active
     void setOverride(bool overridden);
@@ -52,6 +58,8 @@ private:
     bool _sensorFail;
     bool _humidHigh;
     bool _humidLow;
+    bool _digitalFault;       // Digital control-sensor lost (running on thermistor)
+    bool _digitalFaultLatched; // One-shot announce guard
     bool _silenced;
     bool _overridden;
     float _maxTemp;
@@ -59,6 +67,8 @@ private:
     // Sustained alarm timing
     unsigned long _overTempStart;
     bool _overTempTiming;
+    unsigned long _overTempClearStart;
+    bool _overTempClearTiming;
     unsigned long _underTempStart;
     bool _underTempTiming;
 

@@ -263,9 +263,9 @@ void Terminal::cmdHelp() {
     Serial.println(F("  status               Show detailed status"));
     Serial.println(F("  save                 Force save state to EEPROM now"));
     Serial.println(F("  set temp <C>         Override temperature setpoint"));
-    Serial.println(F("  set adc <value>      Override PID target to raw ADC value (0-1023)"));
-    Serial.println(F("  set adc off          Disable ADC target mode, return to temp"));
-    Serial.println(F("  set maxtemp <C>      Set safety max temp (35-50C)"));
+    Serial.println(F("  set maxtemp <C>      Set safety max temp (35-42C)"));
+    Serial.println(F("  set tempsource thermistor|sht31|dht  Control temp sensor source"));
+    Serial.println(F("  set temppin <n>      Pin/addr for active source (ADC 0/1 | DHT pin | SHT31 0x44/0x45)"));
     Serial.println(F("  set humidity <lo> <hi>  Override humidity range (%)"));
     Serial.println(F("  set pid <Kp> <Ki> <Kd>  Set PID tuning"));
     Serial.println(F("  set turns <N>        Set turns per day"));
@@ -378,6 +378,15 @@ void Terminal::cmdStart() {
         Serial.println(F("Cannot start — custom species has 0 days. Configure first."));
         return;
     }
+
+    // Fresh batch: clear everything inherited from the previous run so a new
+    // species doesn't run with old overrides/silenced alarms/turn counts
+    _turner->resetDayCount();
+    _sm->clearOverrides();
+    _sm->clearAdcTarget();
+    _safety->setOverride(false);
+    _safety->clearAlarms(); // Also un-silences the buzzer
+    Serial.println(F(">> Cleared previous-run overrides, safety override, silenced alarms and turn count."));
 
     _heater->clearShutdown();
     _heater->setManualSpeed(-1);
@@ -532,6 +541,36 @@ void Terminal::cmdStatus() {
     Serial.print(F(" Kd="));
     Serial.println(_pid->getKd(), 2);
 
+    // Control temperature source + its pin/address + live reading
+    Serial.print(F("  TempSrc: "));
+    switch (_heater->getTempSource()) {
+        case TEMP_SOURCE_SHT31:
+            Serial.print(F("SHT31 @0x"));
+            Serial.print(_heater->getSht31Address(), HEX);
+            Serial.print(' ');
+            break;
+        case TEMP_SOURCE_DHT:
+            Serial.print(F("DHT pin "));
+            Serial.print(_humid->getPin());
+            Serial.print(' ');
+            break;
+        default:
+            Serial.print(F("thermistor ADC ch"));
+            Serial.print(_heater->getThermChannel());
+            Serial.print(' ');
+            break;
+    }
+    if (_heater->isDigitalFault()) {
+        Serial.print(F("[FAULT->thermistor] "));
+    } else if (_heater->getTempSource() != TEMP_SOURCE_THERMISTOR && !_heater->hasDigitalSensor()) {
+        Serial.print(F("[absent->thermistor] "));
+    }
+    Serial.print(F("reading="));
+    Serial.print(_heater->readControlTemperature(), 1);
+    Serial.println(F("C"));
+    Serial.print(F("  HumidSrc: "));
+    Serial.println(_humid->usingSht31() ? F("SHT31") : F("DHT"));
+
     if (_safety->isAnyAlarm()) {
         Serial.println(F("  *** ALARMS ACTIVE ***"));
     }
@@ -597,8 +636,8 @@ void Terminal::cmdSet(const char* args) {
     }
     else if (strncasecmp(args, "maxtemp ", 8) == 0) {
         float temp = atof(args + 8);
-        if (temp < 35.0f || temp > 50.0f) {
-            Serial.println(F("Max temp must be 35-50C."));
+        if (temp < 35.0f || temp > TEMP_MAX_SETTABLE) {
+            Serial.println(F("Max temp must be 35-42C (eggs die above ~42C)."));
             return;
         }
         _safety->setMaxTemp(temp);
@@ -606,8 +645,79 @@ void Terminal::cmdSet(const char* args) {
         Serial.print(temp, 1);
         Serial.println(F("C"));
     }
-    else if (strncasecmp(args, "humidity ", 8) == 0) {
+    else if (strncasecmp(args, "tempsource ", 11) == 0) {
+        const char* p = args + 11;
+        while (*p == ' ') p++;
+        if (strcasecmp(p, "thermistor") == 0) {
+            _heater->setTempSource(TEMP_SOURCE_THERMISTOR);
+            _storage->saveTempSource((uint8_t)TEMP_SOURCE_THERMISTOR);
+            Serial.println(F(">> Control temp source: thermistor"));
+        } else if (strcasecmp(p, "sht31") == 0) {
+            _heater->setTempSource(TEMP_SOURCE_SHT31);
+            _storage->saveTempSource((uint8_t)TEMP_SOURCE_SHT31);
+            Serial.println(F(">> Control temp source: SHT31"));
+            if (!_heater->hasDigitalSensor()) {
+                Serial.println(F("   WARNING: SHT31 not responding — control stays on the thermistor until it does."));
+            }
+        } else if (strcasecmp(p, "dht") == 0) {
+            _heater->setTempSource(TEMP_SOURCE_DHT);
+            _storage->saveTempSource((uint8_t)TEMP_SOURCE_DHT);
+            Serial.println(F(">> Control temp source: DHT"));
+            Serial.println(F("   NOTE: DHT11 temp is integer 1C — coarser than the thermistor."));
+            if (!_heater->hasDigitalSensor()) {
+                Serial.println(F("   WARNING: DHT not responding — control stays on the thermistor until it does."));
+            }
+        } else {
+            Serial.println(F("Usage: set tempsource thermistor|sht31|dht"));
+        }
+    }
+    else if (strncasecmp(args, "temppin ", 8) == 0) {
+        // Interpreted by the ACTIVE tempsource:
+        //   THERMISTOR -> ADC channel (0/1)
+        //   DHT        -> digital pin (0-45)
+        //   SHT31      -> I2C address (0x44/0x45; hex or decimal accepted)
         const char* p = args + 8;
+        while (*p == ' ') p++;
+        long val = strtol(p, nullptr, 0); // base 0 → accepts 0x44 and 68
+        switch (_heater->getTempSource()) {
+            case TEMP_SOURCE_THERMISTOR:
+                if (val != 0 && val != 1) {
+                    Serial.println(F("Thermistor ADC channel must be 0 or 1."));
+                    return;
+                }
+                _heater->setThermChannel((uint8_t)val);
+                _storage->saveThermChannel((uint8_t)val);
+                Serial.print(F(">> Thermistor ADC channel: "));
+                Serial.println((uint8_t)val);
+                break;
+            case TEMP_SOURCE_DHT:
+                if (val < 0 || val > 45) {
+                    Serial.println(F("DHT pin must be 0-45."));
+                    return;
+                }
+                _humid->setPin((uint8_t)val);
+                _humid->begin();
+                _storage->saveDhtPin((uint8_t)val);
+                Serial.print(F(">> DHT pin: "));
+                Serial.println((uint8_t)val);
+                break;
+            case TEMP_SOURCE_SHT31:
+                if (val != 0x44 && val != 0x45) {
+                    Serial.println(F("SHT31 address must be 0x44 or 0x45."));
+                    return;
+                }
+                _storage->saveShtAddr((uint8_t)val);
+                Serial.print(F(">> SHT31 address: 0x"));
+                Serial.println((uint8_t)val, HEX);
+                Serial.println(F("   Reboot to re-probe the SHT31 at the new address."));
+                break;
+        }
+    }
+    else if (strncasecmp(args, "humidity ", 9) == 0) {
+        // Compare 9 chars (incl. trailing space) so p starts at the first
+        // number — comparing 8 left p on the space and both atoi() calls
+        // parsed the SAME token, making lo == hi.
+        const char* p = args + 9;
         uint8_t lo = (uint8_t)atoi(p);
         // Find second number
         while (*p && *p != ' ') p++;
@@ -773,7 +883,7 @@ void Terminal::cmdSet(const char* args) {
         Serial.println(F("). Use 'save' to persist."));
     }
     else {
-        Serial.println(F("Usage: set temp|humidity|pid|turns|turn deg|turn rpm|fan|preheat|day|elapsed|thermistor <values>"));
+        Serial.println(F("Usage: set temp|humidity|pid|turns|turn deg|turn rpm|fan|preheat|day|elapsed|thermistor|tempsource|temppin <values>"));
     }
 }
 
@@ -793,7 +903,10 @@ void Terminal::cmdReset() {
     _clock->stop();
     _safety->clearAlarms();
     _pid->begin(PID_DEFAULT_KP, PID_DEFAULT_KI, PID_DEFAULT_KD);
-    Serial.println(F(">> Reset complete. All settings restored to defaults."));
+    // Also drop in-RAM calibration so the running session matches the wiped EEPROM
+    _heater->setTempOffset(0.0f);
+    _heater->setCustomThermistor(0.0f, 0.0f);
+    Serial.println(F(">> Reset complete. All settings restored to defaults (event log kept)."));
 }
 
 void Terminal::cmdSilence() {

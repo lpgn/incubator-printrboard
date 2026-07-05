@@ -65,20 +65,26 @@ void EggTurner::update(uint32_t elapsedDaySeconds) {
                 // Turn complete — always same direction, no toggle
                 _stepping = false;
 
+                // Only a REAL turn counts and advances the schedule — a test
+                // turn must not postpone the next scheduled turn.
                 if (!_testTurn) {
                     _turnsCompleted++;
+                    _nextTurnTime += getTurnInterval();
                 }
-                _testTurn = false;
-                _nextTurnTime += getTurnInterval();
 
                 // Disable stepper to save power and reduce heat
                 digitalWrite(TURNER_ENABLE_PIN, HIGH);
 
-                Serial.print(F("[TURNER] Turn "));
-                Serial.print(_turnsCompleted);
-                Serial.print(F("/"));
-                Serial.print(_turnsPerDay);
-                Serial.println(F(" complete."));
+                if (!_testTurn) {
+                    Serial.print(F("[TURNER] Turn "));
+                    Serial.print(_turnsCompleted);
+                    Serial.print(F("/"));
+                    Serial.print(_turnsPerDay);
+                    Serial.println(F(" complete."));
+                } else {
+                    Serial.println(F("[TURNER] Test turn complete."));
+                }
+                _testTurn = false;
             }
         }
         return;
@@ -182,11 +188,16 @@ void EggTurner::doStep() {
     uint32_t phase = min(_accelStep, stepsFromEnd);
 
     if (phase < TURNER_ACCEL_STEPS) {
-        // Acceleration/deceleration phase — slower steps
-        uint16_t accelDelay = _stepDelayUs + (uint16_t)((_stepDelayUs * (TURNER_ACCEL_STEPS - phase)) / TURNER_ACCEL_STEPS);
+        // Acceleration/deceleration phase — slower steps.
+        // uint32 math: at low RPM _stepDelayUs*2 exceeds uint16 and would
+        // wrap, making the accel ramp FASTER than cruise speed.
+        uint32_t accelDelay = (uint32_t)_stepDelayUs +
+                              ((uint32_t)_stepDelayUs * (TURNER_ACCEL_STEPS - phase)) / TURNER_ACCEL_STEPS;
         // Apply the longer delay
         if (accelDelay > _stepDelayUs) {
-            delayMicroseconds(accelDelay - _stepDelayUs);
+            uint32_t extra = accelDelay - _stepDelayUs;
+            if (extra > 16000UL) extra = 16000UL; // delayMicroseconds() is only accurate below ~16.4ms
+            delayMicroseconds((unsigned int)extra);
         }
     }
 

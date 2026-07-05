@@ -60,7 +60,7 @@
 #if THERMISTOR_TYPE == THERMISTOR_EPCOS_100K
     #define THERM_NOMINAL_R     100000.0f  // Resistance at nominal temperature
     #define THERM_NOMINAL_T     25.0f      // Nominal temperature (°C)
-    #define THERM_BETA          3950.0f    // Beta coefficient
+    #define THERM_BETA          4092.0f    // Beta coefficient (B25/85 for EPCOS B57560G104F)
 #else
     #error "Unknown THERMISTOR_TYPE selected"
 #endif
@@ -68,8 +68,10 @@
 #define THERM_SERIES_R      4700.0f    // Series resistor value (ohms)
 #define THERM_ADC_MAX       1023       // 10-bit ADC
 
-// ADC oversampling
-#define THERM_OVERSAMPLE    16         // Number of ADC samples to average
+// ADC oversampling — readRawADC() returns the SUM of the samples (not the
+// average) so heater-PWM noise dithers the LSB and yields extra effective bits.
+#define THERM_OVERSAMPLE    16         // Number of ADC samples to sum
+#define THERM_ADC_SUM_MAX   (THERM_ADC_MAX * THERM_OVERSAMPLE)  // 16368 — full-scale on the summed scale
 
 // =============================================================================
 // PID CONFIGURATION
@@ -78,14 +80,15 @@
 #define PID_SAMPLE_MS       1000       // PID update interval (ms)
 // Tuned from live incubation data (2026-04-19).
 // ZN autotune Kd=6893 was far too aggressive (bang-bang derivative).
-// These values yield ±0.3°C ripple with smooth heater output.
+// KD=800 also railed the heater 0<->255: the thermistor quantum is ~0.35°C per
+// ADC count, so a single-count flicker made the D-term swing the full output.
 #define PID_DEFAULT_KP      40.0f
 #define PID_DEFAULT_KI      0.5f
-#define PID_DEFAULT_KD      800.0f
+#define PID_DEFAULT_KD      20.0f
 #define PID_OUTPUT_MIN      0
 #define PID_OUTPUT_MAX      255
 #define PID_PREHEAT_MAX     255        // Max PWM during preheat (100%)
-#define PID_WINDUP_LIMIT    100.0f     // Anti-windup integral limit
+#define PID_WINDUP_LIMIT    255.0f     // Anti-windup integral limit (must reach full output)
 
 // Autotune
 #define AUTOTUNE_CYCLES     4          // Number of oscillation cycles to measure
@@ -96,10 +99,12 @@
 // =============================================================================
 
 #define TEMP_MAX_CUTOFF     40.0f      // °C — heater OFF immediately
+#define TEMP_MAX_SETTABLE   42.0f      // °C — upper limit for 'set maxtemp' (eggs die above ~42°C)
 #define TEMP_MIN_WARNING    35.0f      // °C — alarm if below for too long
 #define TEMP_MIN_WARN_MS    600000UL   // 10 minutes below min → warning
-#define TEMP_SENSOR_FAIL_LO 1          // ADC value indicating open circuit
-#define TEMP_SENSOR_FAIL_HI 1022       // ADC value indicating short circuit
+// Thresholds are on the summed-ADC scale (see THERM_OVERSAMPLE)
+#define TEMP_SENSOR_FAIL_LO (1 * THERM_OVERSAMPLE)     // at/below = short circuit (thermistor shorted to GND)
+#define TEMP_SENSOR_FAIL_HI (1022 * THERM_OVERSAMPLE)  // at/above = open thermistor (pullup drags input high)
 
 // =============================================================================
 // DHT HUMIDITY SENSOR CONFIGURATION
@@ -180,6 +185,10 @@
 #define EEPROM_ADDR_THERM_R25   0x104  // 4 bytes (float)
 #define EEPROM_ADDR_THERM_BETA  0x108  // 4 bytes (float)
 #define EEPROM_ADDR_PREHEAT_MAX 0x10C  // 1 byte (uint8_t)
+#define EEPROM_ADDR_TEMP_SOURCE 0x10D  // 1 byte (TempSource: 0=thermistor, 1=SHT31, 2=DHT)
+#define EEPROM_ADDR_THERM_CH    0x10E  // 1 byte — thermistor ADC channel (0 or 1)
+#define EEPROM_ADDR_DHT_PIN     0x10F  // 1 byte — DHT digital pin number
+#define EEPROM_ADDR_SHT_ADDR    0x110  // 1 byte — SHT31 I2C address (0x44/0x45)
 
 // =============================================================================
 // SERIAL / TERMINAL CONFIGURATION
@@ -201,6 +210,13 @@
 // =============================================================================
 
 #define RTC_I2C_ADDR        0x68       // DS3231 I2C address
+
+// =============================================================================
+// SHT31 TEMP/HUMIDITY SENSOR (optional — shares the I2C bus with the DS3231)
+// =============================================================================
+
+#define SHT31_I2C_ADDR_DEFAULT  0x44   // ADDR pin low (0x45 = ADDR high)
+#define SHT31_READ_INTERVAL_MS  1000UL // Poll cadence (single-shot ~15ms read)
 #define RTC_CHECK_INTERVAL  60000UL    // Sync software clock to RTC every 60s
 
 #endif // CONFIG_H

@@ -47,13 +47,16 @@ void FanController::update(float tempError, float humidError) {
 
     if (humidExcess > FAN_HUMID_DEADBAND) {
         // --- Compute proportional fan speed ---
-        // Map humidity excess from deadband..full_range to MIN_ACTIVE..MAX
+        // Map humidity excess from deadband..full_range onto the configured
+        // speed range (setSpeedRange), floored at the motor's stall PWM
         float range = FAN_HUMID_FULL_RANGE - FAN_HUMID_DEADBAND;
         float fraction = (humidExcess - FAN_HUMID_DEADBAND) / range;
         if (fraction > 1.0f) fraction = 1.0f;
 
-        speed = FAN_MIN_ACTIVE +
-                (uint8_t)(fraction * (float)(FAN_MAX_SPEED - FAN_MIN_ACTIVE));
+        uint8_t minActive = (_minSpeed > FAN_MIN_ACTIVE) ? _minSpeed : FAN_MIN_ACTIVE;
+        uint8_t maxSpeed = (_maxSpeed > minActive) ? _maxSpeed : minActive;
+        speed = minActive +
+                (uint8_t)(fraction * (float)(maxSpeed - minActive));
 
         // --- Temperature protection ---
         // tempError > 0 means current temp is BELOW setpoint (too cold).
@@ -83,7 +86,8 @@ void FanController::setManualSpeed(int16_t speed) {
         _manualSpeed = -1;
     } else {
         _manualMode = true;
-        _manualSpeed = (speed > 0) ? (int16_t)_maxSpeed : 0;
+        // Honor the requested PWM — don't coerce every positive value to max
+        _manualSpeed = (speed > 255) ? 255 : speed;
         _currentSpeed = (uint8_t)_manualSpeed;
         analogWrite(FAN_PIN, _currentSpeed);
     }
@@ -100,6 +104,10 @@ uint8_t FanController::getSpeedPercent() const {
 }
 
 void FanController::fullSpeed() {
+    // Latch manual mode so the alarm speed persists on its own — callers
+    // return the fan to auto with setManualSpeed(-1) on recovery
+    _manualMode = true;
+    _manualSpeed = _maxSpeed;
     _currentSpeed = _maxSpeed;
     analogWrite(FAN_PIN, _maxSpeed);
 }

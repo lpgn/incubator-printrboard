@@ -65,6 +65,8 @@ private:
     // PID state
     float _integral;
     float _lastInput;
+    float _filteredInput;           // EMA-filtered input for the D-term
+    unsigned long _lastComputeMs;   // For dt scaling of the derivative
     int16_t _output;
     int16_t _outMin, _outMax;
     bool _firstCompute;
@@ -78,6 +80,7 @@ private:
     uint8_t _atCycleCount;
     uint8_t _atTargetCycles;
     unsigned long _atLastToggle;
+    unsigned long _atHeatHalfPeriod; // Heating half-period of the current cycle (ms)
     float _atMaxTemp;
     float _atMinTemp;
     float _atPeriodSum;

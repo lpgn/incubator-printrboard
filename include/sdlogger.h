@@ -48,6 +48,9 @@ private:
     uint8_t _csPin;
 
     bool ensureHeader(const char* filename);
+
+    // Mark the card not-ready after a failed write and warn once
+    void markWriteFailure();
 };
 
 #endif // SDLOGGER_H

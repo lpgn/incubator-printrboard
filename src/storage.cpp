@@ -1,5 +1,6 @@
 #include "storage.h"
 #include "config.h"
+#include "state.h"
 #include <EEPROM.h>
 
 Storage::Storage() {}
@@ -66,15 +67,27 @@ bool Storage::load(SavedState& outState) {
     if (outState.speciesID >= SPECIES_COUNT) return false;
     if (outState.targetTemp < 300 || outState.targetTemp > 450) return false; // 30-45°C
 
+    // Only running states are ever legitimately persisted — reject anything
+    // else so a stray record (e.g. IDLE) can't fake a power recovery.
+    if (outState.state != (uint8_t)STATE_INCUBATING &&
+        outState.state != (uint8_t)STATE_LOCKDOWN &&
+        outState.state != (uint8_t)STATE_HATCHING) return false;
+
     return true;
 }
 
 void Storage::clear() {
-    // Only clear our data area, not the entire EEPROM
-    for (uint16_t i = 0; i < 256; i++) {
+    // Factory reset: clear state + custom species area (0x00-0x7F) and the
+    // calibration block, and invalidate the stored species presets — but
+    // KEEP the event log (0x80-0xFF) for post-mortem diagnostics.
+    for (uint16_t i = 0; i < EEPROM_ADDR_LOG; i++) {
         EEPROM.update(i, 0xFF);
     }
-    Serial.println(F("[STORAGE] EEPROM cleared."));
+    for (uint16_t i = EEPROM_ADDR_TEMP_OFFSET; i <= EEPROM_ADDR_SHT_ADDR; i++) {
+        EEPROM.update(i, 0xFF);
+    }
+    EEPROM.update(0x200, 0xFF); // Preset magic byte (see species.cpp) — presets revert to factory on boot
+    Serial.println(F("[STORAGE] EEPROM cleared (event log kept)."));
 }
 
 bool Storage::hasValidState() {
@@ -161,7 +174,10 @@ uint8_t Storage::calcChecksum(const SavedState& s) {
     cs ^= s.state;
     cs ^= (uint8_t)(s.elapsedSeconds & 0xFF);
     cs ^= (uint8_t)((s.elapsedSeconds >> 8) & 0xFF);
+    cs ^= (uint8_t)((s.elapsedSeconds >> 16) & 0xFF);
+    cs ^= (uint8_t)((s.elapsedSeconds >> 24) & 0xFF);
     cs ^= (uint8_t)(s.currentDay & 0xFF);
+    cs ^= (uint8_t)((s.currentDay >> 8) & 0xFF);
     cs ^= s.turnsToday;
     cs ^= (uint8_t)(s.epoch & 0xFF);
     cs ^= (uint8_t)((s.epoch >> 8) & 0xFF);
@@ -176,7 +192,9 @@ uint8_t Storage::calcChecksum(const SavedState& s) {
     fp = (const uint8_t*)&s.pidKd;
     for (uint8_t i = 0; i < 4; i++) cs ^= fp[i];
     cs ^= (uint8_t)(s.targetTemp & 0xFF);
+    cs ^= (uint8_t)((s.targetTemp >> 8) & 0xFF);
     cs ^= (uint8_t)(s.humidityTarget & 0xFF);
+    cs ^= (uint8_t)((s.humidityTarget >> 8) & 0xFF);
     return cs;
 }
 
@@ -239,6 +257,45 @@ uint8_t Storage::loadPreheatMax() {
     uint8_t val = EEPROM.read(EEPROM_ADDR_PREHEAT_MAX);
     if (val == 0xFF) return 0; // Uninitialized = use compile-time default
     return val;
+}
+
+void Storage::saveTempSource(uint8_t src) {
+    EEPROM.update(EEPROM_ADDR_TEMP_SOURCE, src);
+}
+
+uint8_t Storage::loadTempSource() {
+    uint8_t val = EEPROM.read(EEPROM_ADDR_TEMP_SOURCE);
+    // 0=thermistor, 1=SHT31, 2=DHT. Legacy "digital"==1 maps onto SHT31==1
+    // transparently. Anything else (0xFF/unset) → thermistor.
+    if (val == 1 || val == 2) return val;
+    return 0;
+}
+
+void Storage::saveThermChannel(uint8_t ch) {
+    EEPROM.update(EEPROM_ADDR_THERM_CH, ch);
+}
+
+uint8_t Storage::loadThermChannel(uint8_t defCh) {
+    uint8_t val = EEPROM.read(EEPROM_ADDR_THERM_CH);
+    return (val <= 1) ? val : defCh; // valid channels: 0 or 1
+}
+
+void Storage::saveDhtPin(uint8_t pin) {
+    EEPROM.update(EEPROM_ADDR_DHT_PIN, pin);
+}
+
+uint8_t Storage::loadDhtPin(uint8_t defPin) {
+    uint8_t val = EEPROM.read(EEPROM_ADDR_DHT_PIN);
+    return (val <= 45) ? val : defPin; // Teensy++2.0 digital pins 0-45
+}
+
+void Storage::saveShtAddr(uint8_t addr) {
+    EEPROM.update(EEPROM_ADDR_SHT_ADDR, addr);
+}
+
+uint8_t Storage::loadShtAddr(uint8_t defAddr) {
+    uint8_t val = EEPROM.read(EEPROM_ADDR_SHT_ADDR);
+    return (val == 0x44 || val == 0x45) ? val : defAddr;
 }
 
 void Storage::invalidateState() {

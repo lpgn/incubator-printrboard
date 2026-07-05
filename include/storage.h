@@ -61,6 +61,19 @@ public:
     void savePreheatMax(uint8_t pwm);
     uint8_t loadPreheatMax();
 
+    // Save/load control-temperature source (TempSource value)
+    void saveTempSource(uint8_t src);
+    uint8_t loadTempSource();
+
+    // Save/load per-source pin/address. Each loader returns the stored value,
+    // or the supplied default when the EEPROM cell is unset (0xFF)/invalid.
+    void saveThermChannel(uint8_t ch);
+    uint8_t loadThermChannel(uint8_t defCh);
+    void saveDhtPin(uint8_t pin);
+    uint8_t loadDhtPin(uint8_t defPin);
+    void saveShtAddr(uint8_t addr);
+    uint8_t loadShtAddr(uint8_t defAddr);
+
     // Invalidate saved state (clear magic byte) without destroying calibration/logs
     void invalidateState();
 

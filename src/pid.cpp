@@ -5,9 +5,15 @@
 // PID Controller Implementation
 // =============================================================================
 
+// D-term conditioning: the thermistor quantum is ~0.35°C per ADC count, so the
+// derivative acts on a low-pass-filtered input with a deadband below the quantum.
+#define PID_D_FILTER_ALPHA  0.1f    // EMA coefficient for the D-term input filter
+#define PID_D_DEADBAND      0.1f    // °C — filtered changes below this yield zero D-term
+
 PIDController::PIDController()
     : _kp(PID_DEFAULT_KP), _ki(PID_DEFAULT_KI), _kd(PID_DEFAULT_KD),
       _setpoint(37.5f), _integral(0.0f), _lastInput(0.0f),
+      _filteredInput(0.0f), _lastComputeMs(0),
       _output(0), _outMin(PID_OUTPUT_MIN), _outMax(PID_OUTPUT_MAX),
       _firstCompute(true), _autotuning(false) {}
 
@@ -31,20 +37,41 @@ void PIDController::setOutputLimits(int16_t min, int16_t max) {
 }
 
 int16_t PIDController::compute(float currentTemp) {
+    unsigned long now = millis();
+    float dt = (float)(now - _lastComputeMs) / 1000.0f;
+    _lastComputeMs = now;
+
     float error = _setpoint - currentTemp;
 
-    // Integral with anti-windup
-    _integral += _ki * error;
+    // Conditional integration (anti-windup): freeze the I-term while the
+    // previous output was saturated, so it can't wind up during warm-up
+    // or an over-temp hold.
+    bool saturated = (_output <= _outMin) || (_output >= _outMax);
+    if (!saturated || _firstCompute) {
+        _integral += _ki * error;
+    }
     if (_integral > PID_WINDUP_LIMIT) _integral = PID_WINDUP_LIMIT;
     if (_integral < -PID_WINDUP_LIMIT) _integral = -PID_WINDUP_LIMIT;
 
-    // Derivative on measurement (not on error, avoids derivative kick)
+    // Low-pass filter the input (EMA) so single-ADC-count flicker can't
+    // slam the D-term.
+    if (_firstCompute) {
+        _filteredInput = currentTemp;
+    } else {
+        _filteredInput += PID_D_FILTER_ALPHA * (currentTemp - _filteredInput);
+    }
+
+    // Derivative on filtered measurement (not on error, avoids derivative
+    // kick), scaled by actual dt so it's in °C/s regardless of call jitter.
     float derivative = 0.0f;
-    if (!_firstCompute) {
-        derivative = currentTemp - _lastInput; // note: negative of d(error)
+    if (!_firstCompute && dt > 0.0f) {
+        float dInput = _filteredInput - _lastInput; // note: negative of d(error)
+        // Deadband: sub-quantum jitter contributes zero D-term
+        if (dInput > -PID_D_DEADBAND && dInput < PID_D_DEADBAND) dInput = 0.0f;
+        derivative = dInput / dt;
     }
     _firstCompute = false;
-    _lastInput = currentTemp;
+    _lastInput = _filteredInput;
 
     // PID output
     float output = (_kp * error) + _integral - (_kd * derivative);
@@ -60,6 +87,8 @@ int16_t PIDController::compute(float currentTemp) {
 void PIDController::reset() {
     _integral = 0.0f;
     _lastInput = 0.0f;
+    _filteredInput = 0.0f;
+    _lastComputeMs = millis();
     _output = 0;
     _firstCompute = true;
 }
@@ -78,6 +107,7 @@ void PIDController::autotuneStart(float setpoint) {
     _atCycleCount = 0;
     _atTargetCycles = AUTOTUNE_CYCLES;
     _atLastToggle = millis();
+    _atHeatHalfPeriod = 0;
     _atLastLogTime = millis();
     _atMaxTemp = 0.0f;
     _atMinTemp = 999.0f;
@@ -119,6 +149,7 @@ bool PIDController::autotuneUpdate(float currentTemp) {
             // Was heating, now cooling
             _atOutput = _outMin;
             _atHeating = false;
+            _atHeatHalfPeriod = halfPeriod; // Heating half of the current cycle
             Serial.print(F("[AUTOTUNE] >> Switched to COOLING at "));
             Serial.print(currentTemp, 1);
             Serial.println(F("C"));
@@ -135,9 +166,10 @@ bool PIDController::autotuneUpdate(float currentTemp) {
                 float amplitude = (_atMaxTemp - _atMinTemp) / 2.0f;
                 _atAmplitudeSum += amplitude;
 
-                // Period is time for full cycle — we approximate from 2x the last half
-                // But more accurately we track full cycles
-                _atPeriodSum += (float)halfPeriod * 2.0f;  // rough estimate
+                // Period = heating half + cooling half of this cycle
+                // (both toggles are timestamped; heating and cooling halves
+                // are asymmetric, so doubling one half skews Tu)
+                _atPeriodSum += (float)(_atHeatHalfPeriod + halfPeriod);
                 _atCompletedCycles++;
 
                 Serial.print(F("[AUTOTUNE] Cycle "));

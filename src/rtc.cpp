@@ -5,10 +5,15 @@
 // Registers: 0x00-0x06 = time, 0x11-0x12 = temperature
 // =============================================================================
 
-DS3231::DS3231() : _present(false) {}
+DS3231::DS3231() : _present(false), _timeValid(false), _busFailures(0) {}
 
 void DS3231::begin() {
     Wire.begin();
+#ifdef WIRE_HAS_TIMEOUT
+    // Bounded I2C waits so a wedged bus can't hang the main loop
+    // (the watchdog is the backstop, but avoid resets)
+    Wire.setWireTimeout(25000UL, true);
+#endif
 
     // Probe for DS3231 at address 0x68
     Wire.beginTransmission(RTC_I2C_ADDR);
@@ -19,6 +24,15 @@ void DS3231::begin() {
         // Disable SQW output, enable battery-backed oscillator
         // Control register (0x0E): disable alarms/SQW, enable oscillator
         writeRegister(0x0E, 0x00);
+
+        // OSF (bit 7 of status reg 0x0F) set = oscillator stopped at some
+        // point (battery dead/removed) — the time is bogus and must not feed
+        // blackout catch-up until the user runs 'time set'.
+        uint8_t status = readRegister(0x0F);
+        _timeValid = !(status & 0x80);
+        if (!_timeValid) {
+            Serial.println(F("[RTC] Oscillator stop flag set — time INVALID until 'time set'."));
+        }
     }
 }
 
@@ -27,10 +41,25 @@ bool DS3231::readDateTime(RTCDateTime& dt) {
 
     Wire.beginTransmission(RTC_I2C_ADDR);
     Wire.write(0x00); // Start at register 0
-    if (Wire.endTransmission() != 0) return false;
+    if (Wire.endTransmission() != 0) {
+        // Skip the RTC entirely after repeated bus failures so a flaky bus
+        // can't stall every loop iteration
+        if (++_busFailures >= 10) {
+            _present = false;
+            Serial.println(F("[RTC] I2C bus not responding — RTC disabled."));
+        }
+        return false;
+    }
 
     Wire.requestFrom((uint8_t)RTC_I2C_ADDR, (uint8_t)7);
-    if (Wire.available() < 7) return false;
+    if (Wire.available() < 7) {
+        if (++_busFailures >= 10) {
+            _present = false;
+            Serial.println(F("[RTC] I2C bus not responding — RTC disabled."));
+        }
+        return false;
+    }
+    _busFailures = 0;
 
     dt.second    = bcdToDec(Wire.read() & 0x7F);
     dt.minute    = bcdToDec(Wire.read() & 0x7F);
@@ -56,10 +85,21 @@ bool DS3231::setDateTime(uint16_t year, uint8_t month, uint8_t day,
     Wire.write(decToBcd(day));
     Wire.write(decToBcd(month));
     Wire.write(decToBcd(year - 2000));
-    return (Wire.endTransmission() == 0);
+    if (Wire.endTransmission() != 0) return false;
+
+    // Time was just set — clear the oscillator-stop flag (OSF, status bit 7)
+    // and mark the time trustworthy again
+    uint8_t status = readRegister(0x0F);
+    writeRegister(0x0F, status & 0x7F);
+    _timeValid = true;
+    return true;
 }
 
 uint32_t DS3231::getEpoch2000() {
+    // Never hand out an epoch from an untrusted clock — a bogus time would
+    // corrupt blackout catch-up on power recovery
+    if (!_timeValid) return 0;
+
     RTCDateTime dt;
     if (!readDateTime(dt)) return 0;
 

@@ -1,5 +1,6 @@
 #include "humidity.h"
 #include "config.h"
+#include "sht31.h"
 
 // =============================================================================
 // DHT11/DHT22 Bit-Bang Driver Implementation
@@ -7,21 +8,49 @@
 // =============================================================================
 
 HumiditySensor::HumiditySensor()
-    : _humidity(50.0f), _temperature(25.0f), _failures(0), _present(true) {}
+    : _humidity(50.0f), _temperature(25.0f), _failures(0), _present(true),
+      _everPresent(false), _lastRedetect(0), _pin(DHT22_PIN), _sht31(nullptr) {}
 
 void HumiditySensor::begin() {
-    pinMode(DHT22_PIN, INPUT_PULLUP);
+    pinMode(_pin, INPUT_PULLUP);
+}
+
+void HumiditySensor::setPin(uint8_t pin) {
+    _pin = pin;
+    _present = true;   // re-arm detection on the new pin
+    _failures = 0;
+    pinMode(_pin, INPUT_PULLUP);
 }
 
 void HumiditySensor::reset() {
     _present = true;
     _failures = 0;
-    pinMode(DHT22_PIN, INPUT_PULLUP);
+    pinMode(_pin, INPUT_PULLUP);
+}
+
+bool HumiditySensor::usingSht31() const {
+    return _sht31 && _sht31->isValid();
 }
 
 bool HumiditySensor::read() {
+    // Prefer the SHT31 when it has a valid reading (polled in the main loop);
+    // this reads its cached value, no extra I2C traffic here.
+    if (_sht31 && _sht31->isValid()) {
+        _humidity = _sht31->getHumidity();
+        _temperature = _sht31->getTemperature();
+        _everPresent = true;
+        return true;
+    }
+
     if (!_present) {
-        return false;
+        // Periodic re-detection: retry every ~10 min so a boot-time glitch
+        // doesn't lock the sensor out for the whole run
+        unsigned long now = millis();
+        if (now - _lastRedetect < 600000UL) {
+            return false;
+        }
+        _lastRedetect = now;
+        // Fall through and attempt a read; success re-marks the sensor present
     }
 
     uint8_t data[5] = {0};
@@ -30,7 +59,6 @@ bool HumiditySensor::read() {
         _failures++;
         if (_present && _failures >= 20) {
             _present = false;
-            _humidity = 50.0f;
             Serial.println(F("[DHT] Sensor not detected — operating without humidity sensor."));
         }
         return false;
@@ -71,6 +99,11 @@ bool HumiditySensor::read() {
         return false;
     }
 
+    if (!_present) {
+        _present = true;
+        Serial.println(F("[DHT] Sensor detected — humidity readings restored."));
+    }
+    _everPresent = true;
     _failures = 0;
     return true;
 }
@@ -78,8 +111,8 @@ bool HumiditySensor::read() {
 bool HumiditySensor::readRawData(uint8_t data[5]) {
     // === START SIGNAL ===
     // DHT11 needs ~18ms+, DHT22 needs ~1ms
-    pinMode(DHT22_PIN, OUTPUT);
-    digitalWrite(DHT22_PIN, LOW);
+    pinMode(_pin, OUTPUT);
+    digitalWrite(_pin, LOW);
 #if DHT_TYPE == DHT_TYPE_DHT11
     delay(20);
 #else
@@ -87,11 +120,11 @@ bool HumiditySensor::readRawData(uint8_t data[5]) {
 #endif
 
     // Release line (pull HIGH via pull-up)
-    digitalWrite(DHT22_PIN, HIGH);
+    digitalWrite(_pin, HIGH);
     delayMicroseconds(40);
 
     // Switch to input to read response
-    pinMode(DHT22_PIN, INPUT_PULLUP);
+    pinMode(_pin, INPUT_PULLUP);
 
     // === RESPONSE SIGNAL ===
     // Disable interrupts during timing-critical section — USB SOF on AT90USB1286
@@ -100,21 +133,21 @@ bool HumiditySensor::readRawData(uint8_t data[5]) {
 
     // Wait for LOW (response start) — timeout after 100µs
     uint8_t timeout = 100;
-    while (digitalRead(DHT22_PIN) == HIGH) {
+    while (digitalRead(_pin) == HIGH) {
         if (--timeout == 0) { interrupts(); return false; }
         delayMicroseconds(1);
     }
 
     // Wait for HIGH (response acknowledge)
     timeout = 100;
-    while (digitalRead(DHT22_PIN) == LOW) {
+    while (digitalRead(_pin) == LOW) {
         if (--timeout == 0) { interrupts(); return false; }
         delayMicroseconds(1);
     }
 
     // Wait for LOW (data transmission start)
     timeout = 100;
-    while (digitalRead(DHT22_PIN) == HIGH) {
+    while (digitalRead(_pin) == HIGH) {
         if (--timeout == 0) { interrupts(); return false; }
         delayMicroseconds(1);
     }
@@ -124,7 +157,7 @@ bool HumiditySensor::readRawData(uint8_t data[5]) {
     for (uint8_t i = 0; i < 40; i++) {
         // Wait for HIGH (start of bit)
         timeout = 100;
-        while (digitalRead(DHT22_PIN) == LOW) {
+        while (digitalRead(_pin) == LOW) {
             if (--timeout == 0) { interrupts(); return false; }
             delayMicroseconds(1);
         }
@@ -132,7 +165,7 @@ bool HumiditySensor::readRawData(uint8_t data[5]) {
         // Measure HIGH duration to determine bit value
         unsigned long tStart = micros();
         timeout = 100;
-        while (digitalRead(DHT22_PIN) == HIGH) {
+        while (digitalRead(_pin) == HIGH) {
             if (--timeout == 0) { interrupts(); return false; }
             delayMicroseconds(1);
         }
@@ -151,11 +184,25 @@ bool HumiditySensor::readRawData(uint8_t data[5]) {
 }
 
 float HumiditySensor::getHumidity() const {
-    return _present ? _humidity : 50.0f;
+    if (_sht31 && _sht31->isValid()) return _sht31->getHumidity();
+    // Surface an invalid reading instead of a fabricated 50%
+    return _present ? _humidity : -1.0f;
+}
+
+float HumiditySensor::getTemperature() const {
+    if (_sht31 && _sht31->isValid()) return _sht31->getTemperature();
+    return _temperature;
+}
+
+bool HumiditySensor::isPresent() const {
+    return (_sht31 && _sht31->isValid()) || _present;
 }
 
 bool HumiditySensor::isFailed() const {
-    return _present && _failures >= DHT_MAX_FAILURES;
+    // A valid SHT31 covers humidity even if the DHT is gone
+    if (_sht31 && _sht31->isValid()) return false;
+    // Otherwise a missing/failing DHT IS a failed source — raise the warning
+    return !_present || _failures >= DHT_MAX_FAILURES;
 }
 
 float HumiditySensor::getHumidityMidpoint(uint8_t lo, uint8_t hi) {

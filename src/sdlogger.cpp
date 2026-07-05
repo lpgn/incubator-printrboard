@@ -1,5 +1,6 @@
 #include "sdlogger.h"
 #include "config.h"
+#include <avr/wdt.h>
 
 #define LOG_FILE    "LOGFILE.TXT"
 #define STATE_FILE  "STATE.TXT"
@@ -45,13 +46,24 @@ bool SDLogger::ensureHeader(const char* filename) {
     return true;
 }
 
+void SDLogger::markWriteFailure() {
+    // One-shot warning instead of silently dropping log lines forever
+    if (_ready) {
+        _ready = false;
+        Serial.println(F("[SD] Write FAILED — logging disabled. Check card, then 'sd reinit'."));
+    }
+}
+
 bool SDLogger::writeLog(uint32_t millisVal, float tempC, float humidityPct,
                         uint8_t heaterPct, uint8_t fanPct,
                         const char* stateName, uint16_t day, uint8_t turnsToday) {
     if (!_ready) return false;
 
     File f = SD.open(LOG_FILE, FILE_WRITE);
-    if (!f) return false;
+    if (!f) {
+        markWriteFailure();
+        return false;
+    }
 
     f.print(millisVal);
     f.print(',');
@@ -67,9 +79,15 @@ bool SDLogger::writeLog(uint32_t millisVal, float tempC, float humidityPct,
     f.print(',');
     f.print(day);
     f.print(',');
-    f.println(turnsToday);
+    // println() returns bytes written — 0 means the write failed (card
+    // pulled/full); detect it rather than losing logs silently
+    size_t written = f.println(turnsToday);
 
     f.close();
+    if (written == 0) {
+        markWriteFailure();
+        return false;
+    }
     return true;
 }
 
@@ -84,7 +102,10 @@ bool SDLogger::writeState(uint8_t speciesID, uint8_t state, uint32_t elapsedSeco
     }
 
     File f = SD.open(STATE_FILE, FILE_WRITE);
-    if (!f) return false;
+    if (!f) {
+        markWriteFailure();
+        return false;
+    }
 
     f.print(F("species="));      f.println(speciesID);
     f.print(F("state="));        f.println(state);
@@ -92,9 +113,14 @@ bool SDLogger::writeState(uint8_t speciesID, uint8_t state, uint32_t elapsedSeco
     f.print(F("day="));          f.println(currentDay);
     f.print(F("turns="));        f.println(turnsToday);
     f.print(F("targetTemp="));   f.println(targetTemp, 1);
-    f.print(F("targetHumid="));  f.println(humidityTarget, 1);
+    f.print(F("targetHumid="));
+    size_t written = f.println(humidityTarget, 1);
 
     f.close();
+    if (written == 0) {
+        markWriteFailure();
+        return false;
+    }
     return true;
 }
 
@@ -157,6 +183,7 @@ bool SDLogger::printFile(const char* filename) {
     Serial.println(F(" ---"));
     uint32_t total = 0;
     while (f.available()) {
+        wdt_reset(); // Streaming a big log takes longer than the 4s watchdog
         char buf[65];
         int n = f.read(buf, 64);
         if (n > 0) {

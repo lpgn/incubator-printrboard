@@ -3,9 +3,12 @@
 
 SafetyMonitor::SafetyMonitor()
     : _overTemp(false), _underTemp(false), _sensorFail(false),
-      _humidHigh(false), _humidLow(false), _silenced(false), _overridden(false),
-      _maxTemp(40.0f),
+      _humidHigh(false), _humidLow(false),
+      _digitalFault(false), _digitalFaultLatched(false),
+      _silenced(false), _overridden(false),
+      _maxTemp(TEMP_MAX_CUTOFF),
       _overTempStart(0), _overTempTiming(false),
+      _overTempClearStart(0), _overTempClearTiming(false),
       _underTempStart(0), _underTempTiming(false),
       _lastBuzzToggle(0), _buzzState(false),
       _lastLEDBlink(0), _ledState(false) {}
@@ -20,11 +23,13 @@ void SafetyMonitor::begin() {
 bool SafetyMonitor::check(float temperature, float humidity,
                           bool thermSensorFailed, bool dhtFailed) {
     bool anyAlarm = false;
+    bool newAlarm = false; // A new alarm type asserted this pass
 
     // --- Thermistor sensor failure ---
     if (thermSensorFailed) {
         if (!_sensorFail) {
             _sensorFail = true;
+            newAlarm = true;
             Serial.println(F("!!! ALARM: Thermistor sensor FAILED !!!"));
             Serial.println(F("!!! Heater shut down for safety   !!!"));
         }
@@ -44,6 +49,7 @@ bool SafetyMonitor::check(float temperature, float humidity,
         } else if (millis() - _overTempStart > 2000UL) {
             if (!_overTemp) {
                 _overTemp = true;
+                newAlarm = true;
                 Serial.print(F("!!! ALARM: OVER-TEMP "));
                 Serial.print(temperature, 1);
                 Serial.print(F("C > "));
@@ -52,14 +58,29 @@ bool SafetyMonitor::check(float temperature, float humidity,
             }
             anyAlarm = true;
         }
-    } else {
-        if (_overTemp) {
-            Serial.print(F("RECOVERED: Over-temp cleared. Temp "));
-            Serial.print(temperature, 1);
-            Serial.println(F("C"));
+        _overTempClearTiming = false;
+    } else if (_overTemp) {
+        // Recovery hysteresis: hold the alarm until temp has been at least
+        // 0.5C below the limit for 5s — stops the ~2s recover/re-trip chatter
+        if (!thermSensorFailed && temperature < _maxTemp - 0.5f) {
+            if (!_overTempClearTiming) {
+                _overTempClearTiming = true;
+                _overTempClearStart = millis();
+            } else if (millis() - _overTempClearStart > 5000UL) {
+                Serial.print(F("RECOVERED: Over-temp cleared. Temp "));
+                Serial.print(temperature, 1);
+                Serial.println(F("C"));
+                _overTemp = false;
+                _overTempTiming = false;
+                _overTempClearTiming = false;
+            }
+        } else {
+            _overTempClearTiming = false;
         }
+        if (_overTemp) anyAlarm = true; // Still alarmed while waiting to clear
+    } else {
         _overTempTiming = false;
-        _overTemp = false;
+        _overTempClearTiming = false;
     }
 
     // --- Under-temperature (sustained) ---
@@ -70,6 +91,7 @@ bool SafetyMonitor::check(float temperature, float humidity,
         } else if (millis() - _underTempStart > TEMP_MIN_WARN_MS) {
             if (!_underTemp) {
                 _underTemp = true;
+                newAlarm = true;
                 Serial.print(F("!!! WARNING: Under-temp "));
                 Serial.print(temperature, 1);
                 Serial.print(F("C for >10 min !!!"));
@@ -91,6 +113,7 @@ bool SafetyMonitor::check(float temperature, float humidity,
     if (!dhtFailed && humidity > HUMIDITY_MAX_ALARM) {
         if (!_humidHigh) {
             _humidHigh = true;
+            newAlarm = true;
             Serial.print(F("!!! WARNING: Humidity HIGH "));
             Serial.print(humidity, 1);
             Serial.println(F("% !!!"));
@@ -109,6 +132,7 @@ bool SafetyMonitor::check(float temperature, float humidity,
     if (!dhtFailed && humidity < HUMIDITY_MIN_ALARM && humidity > 0.0f) {
         if (!_humidLow) {
             _humidLow = true;
+            newAlarm = true;
             Serial.print(F("!!! WARNING: Humidity LOW "));
             Serial.print(humidity, 1);
             Serial.println(F("% — Refill water tray! !!!"));
@@ -133,12 +157,34 @@ bool SafetyMonitor::check(float temperature, float humidity,
         }
     }
 
+    // --- Digital control-sensor fault (set externally via setDigitalFault) ---
+    // Sounds the alarm but does NOT trigger heater shutdown — control has
+    // already fallen back to the thermistor. Announced once on the rising edge.
+    if (_digitalFault) {
+        if (!_digitalFaultLatched) {
+            _digitalFaultLatched = true;
+            newAlarm = true;
+            Serial.println(F("!!! ALARM: Control temp sensor lost — running on thermistor !!!"));
+        }
+        anyAlarm = true;
+    } else {
+        _digitalFaultLatched = false;
+    }
+
+    // --- Auto-clear silence ---
+    // 'silence' applies only to the alarms active when it was issued: it
+    // clears when all alarms recover, and a NEW alarm type re-arms the buzzer
+    // (silencing a nuisance beep must not mute over-temp/sensor-fail later).
+    if (!anyAlarm || newAlarm) {
+        _silenced = false;
+    }
+
     // --- Buzzer control ---
     if (anyAlarm && !_silenced && !_overridden) {
         unsigned long now = millis();
         // Beep pattern: 500ms on, 500ms off for critical, 200ms on/1800ms off for warnings
-        uint16_t onTime = (_overTemp || _sensorFail) ? 500 : 200;
-        uint16_t offTime = (_overTemp || _sensorFail) ? 500 : 1800;
+        uint16_t onTime = (_overTemp || _sensorFail || _digitalFault) ? 500 : 200;
+        uint16_t offTime = (_overTemp || _sensorFail || _digitalFault) ? 500 : 1800;
         uint16_t period = _buzzState ? onTime : offTime;
 
         if (now - _lastBuzzToggle >= period) {
@@ -161,7 +207,7 @@ void SafetyMonitor::silenceAlarm() {
 
 void SafetyMonitor::setMaxTemp(float temp) {
     if (temp < 35.0f) temp = 35.0f;
-    if (temp > 50.0f) temp = 50.0f;
+    if (temp > TEMP_MAX_SETTABLE) temp = TEMP_MAX_SETTABLE; // Eggs die above ~42C
     _maxTemp = temp;
 }
 
@@ -179,8 +225,11 @@ void SafetyMonitor::clearAlarms() {
     _sensorFail = false;
     _humidHigh = false;
     _humidLow = false;
+    _digitalFault = false;
+    _digitalFaultLatched = false;
     _silenced = false;
     _overTempTiming = false;
+    _overTempClearTiming = false;
     _underTempTiming = false;
     digitalWrite(BUZZER_PIN, LOW);
 }

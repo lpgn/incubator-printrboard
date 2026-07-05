@@ -8,6 +8,20 @@
 // Heater control — PWM output + NTC thermistor reading
 // =============================================================================
 
+// Control-temperature source. Whatever is selected, readControlTemperature()
+// falls back to the thermistor if the chosen sensor isn't answering, so
+// control is never left templess. Values are EEPROM-persisted — the legacy
+// "digital" == 1 maps onto SHT31 (== 1) so old saves migrate transparently.
+enum TempSource : uint8_t {
+    TEMP_SOURCE_THERMISTOR = 0,
+    TEMP_SOURCE_SHT31      = 1,
+    TEMP_SOURCE_DHT        = 2
+};
+
+// Shared sensors this module can pull a control temperature from
+class SHT31Sensor;
+class HumiditySensor;
+
 class Heater {
 public:
     Heater();
@@ -18,7 +32,33 @@ public:
     // Read temperature from thermistor (°C), with oversampling
     float readTemperature();
 
-    // Read raw averaged ADC value (0-1023) for diagnostics
+    // Temperature used for PID control — routes to the selected source
+    float readControlTemperature();
+
+    // Control-temperature source selection
+    void setTempSource(TempSource src) { _tempSource = src; }
+    TempSource getTempSource() const { return _tempSource; }
+
+    // Wire in the shared digital sensors (SHT31 for temp+humidity, the DHT
+    // module for DHT-as-control-source). Either may be null.
+    void setDigitalSources(SHT31Sensor* sht, HumiditySensor* dht) { _sht31 = sht; _dht = dht; }
+
+    // Is a digital control sensor present and usable right now?
+    bool hasDigitalSensor() const;
+
+    // I2C address the SHT31 was probed at (0 if none wired). For status display.
+    uint8_t getSht31Address() const;
+
+    // Did the ACTIVE digital source fault mid-run (was working, now lost)?
+    // True → control has fallen back to the thermistor and the caller should
+    // raise the sensor-fault alarm. Computed in readControlTemperature().
+    bool isDigitalFault() const { return _digitalFault; }
+
+    // Thermistor ADC channel (0 or 1). Applied at boot from EEPROM.
+    void setThermChannel(uint8_t ch) { _thermChannel = (ch <= 1) ? ch : _thermChannel; }
+    uint8_t getThermChannel() const { return _thermChannel; }
+
+    // Read raw summed ADC value (0-THERM_ADC_SUM_MAX) for diagnostics
     uint16_t readRawADC();
 
     // Set heater target duty (0-255). Actual pin is updated by update() for slow PWM.
@@ -73,6 +113,11 @@ private:
     float _tempOffset;
     float _customNominalR;
     float _customBeta;
+    TempSource _tempSource;
+    uint8_t _thermChannel;      // ADC channel for the thermistor
+    bool _digitalFault;         // Active digital source lost mid-run
+    SHT31Sensor* _sht31;        // Shared SHT31 (may be null)
+    HumiditySensor* _dht;       // Shared DHT module (may be null)
 };
 
 #endif // HEATER_H

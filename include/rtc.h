@@ -30,6 +30,10 @@ public:
     // Is a DS3231 present on the I2C bus?
     bool isPresent() const { return _present; }
 
+    // Is the RTC time trustworthy? False when the oscillator-stop flag (OSF)
+    // was set at boot (battery dead/removed) until the time is set again.
+    bool isTimeValid() const { return _timeValid; }
+
     // Read current date/time from RTC
     bool readDateTime(RTCDateTime& dt);
 
@@ -51,6 +55,8 @@ public:
 
 private:
     bool _present;
+    bool _timeValid;
+    uint8_t _busFailures;  // Consecutive I2C failures — RTC skipped when too many
 
     // BCD conversion helpers
     static uint8_t bcdToDec(uint8_t bcd);
